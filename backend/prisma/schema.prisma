@@ -1,0 +1,101 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = "postgresql://aiser:QK38fONvbotz74gyBi1ahOSDdV3dcU7S@localhost:5432/monopoly_db?schema=public"
+}
+
+model Player {
+    id           String         @id @default(cuid())
+    email        String
+    name         String
+    password     String
+    avatar       String?
+    level        Int            @default(0)
+    totalGames   Int            @default(0)
+    wins         Int            @default(0)
+    winRate      Float          @default(0.0)
+    currentXp    Int            @default(0)
+    nextLevelXp  Int            @default(1000)
+    elo          Int            @default(1000)
+    createdAt    DateTime       @default(now())
+    updateAt     DateTime       @updatedAt
+    lastSeen     DateTime?
+    status       Int            @default(1)
+    GameRoom     GameRoom[]
+    PlayerInRoom PlayerInRoom[]
+
+    @@index([wins])
+    @@index([elo])
+}
+
+model GameRoom {
+    id        String     @id @default(cuid())
+    name      String
+    maxPlayer Int        @default(4)
+    status    GameStatus @default(WAITING)
+    isPrivate Boolean    @default(false)
+    password  String?
+
+    hostId String
+    host   Player @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+    players             PlayerInRoom[]
+    currentTurnPlayerId String?
+
+    gameSetting    Json?
+    cellState      Json?
+    currentPayment Json?
+    pendingChance  Json?
+
+    createdAt  DateTime  @default(now())
+    updatedAt  DateTime  @updatedAt
+    startedAt  DateTime?
+    finishedAt DateTime?
+
+    @@index([status])
+    @@index([isPrivate])
+    @@index([createdAt])
+}
+
+model PlayerInRoom {
+    id       String   @id @default(cuid())
+    playerId String
+    roomId   String
+    joinedAt DateTime @default(now())
+    isReady  Boolean  @default(false)
+
+    // Положение и игровой статус
+    position        Int?
+    positionOnBoard Int     @default(0)
+    jailed          Boolean @default(false) // сидит ли игрок в тюрьме
+    jailTurns       Int     @default(0)
+    bankrupt        Boolean @default(false) // банкрот ли
+    skippedTurns    Int     @default(0)
+    isFrozen        Boolean @default(false)
+
+    // Экономика
+    money      Int   @default(1500) // стартовый капитал
+    properties Json? // список купленных участков / карточек
+
+    // Метаданные
+    lastAction   DateTime? // таймер хода для 
+    bot          Boolean   @default(false)
+    disconnected Boolean   @default(false)
+
+    player Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+    room   GameRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+    @@unique([playerId, roomId])
+    @@index([roomId])
+}
+
+enum GameStatus {
+    WAITING
+    STARTING
+    IN_PROGRESS
+    FINISHED
+    CANCELLED
+}
