@@ -17,6 +17,8 @@ export const GAME_EVENTS = {
   JAIL_ACTION: "jail_action",
   BUY_HOUSE: "buy_house",
   GAME_OVER: "game_over",
+  IS_READY: "is_ready",
+  HOST_LEAVE: "host_leave",
 } as const;
 
 export type GameEventKeys = keyof typeof GAME_EVENTS;

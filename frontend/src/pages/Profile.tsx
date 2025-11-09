@@ -131,7 +131,7 @@ export function ProfilePage() {
             },
           ].map((stat, index) => (
             <motion.div
-              key={stat.label}
+              key={index}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 + index * 0.05 }}

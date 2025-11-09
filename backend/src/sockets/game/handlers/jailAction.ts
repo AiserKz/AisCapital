@@ -2,7 +2,11 @@ import { Server, Socket } from "socket.io";
 import { saveRoomToDB } from "../../../services/gameService.js";
 import { safeSocket } from "../../utils/safeSocket.js";
 import { GAME_EVENTS } from "../events/gameEvents.js";
-import { findRoomAndPlayer } from "../../utils/roomUtils.js";
+import {
+  findRoomAndPlayer,
+  getUserData,
+  sendRoomMessage,
+} from "../../utils/roomUtils.js";
 import { nextTurn } from "../../utils/nextTurn.js";
 
 export const handleJailAction = async (io: Server, socket: Socket) => {
@@ -10,18 +14,18 @@ export const handleJailAction = async (io: Server, socket: Socket) => {
     GAME_EVENTS.JAIL_ACTION,
     safeSocket(async (data: any) => {
       const { roomId, action } = data;
-      const playerId = socket.data.user.id;
+      const { playerId, username } = getUserData(socket);
 
       const { room, player } = await findRoomAndPlayer(roomId, playerId);
 
       if (!player.jailed)
-        return console.log(`⭕ Игрок ${playerId} не в тюрьме!`);
+        return console.log(`⭕ Игрок ${username} не в тюрьме!`);
 
       switch (action) {
         case "roll":
           const dice1 = Math.floor(Math.random() * 6) + 1;
           const dice2 = Math.floor(Math.random() * 6) + 1;
-          console.log(`🎲 Игрок ${playerId} бросил кубики: ${dice1}|${dice2}`);
+          console.log(`🎲 Игрок ${username} бросил кубики: ${dice1}|${dice2}`);
           socket
             .to(roomId)
             .emit(GAME_EVENTS.PLAYER_HAS_MOVED, playerId, dice1, dice2);
@@ -29,7 +33,14 @@ export const handleJailAction = async (io: Server, socket: Socket) => {
             player.jailed = false;
             player.jailTurns = 0;
             console.log(
-              `✅ Игрок ${playerId} выбросил дубль и вышел из тюрьмы!`
+              `✅ Игрок ${username} выбросил дубль и вышел из тюрьмы!`
+            );
+            sendRoomMessage(
+              io,
+              roomId,
+              playerId,
+              `✅ ${username} выбросил дубль и вышел из тюрьмы!`,
+              "EVENT"
             );
           } else {
             player.jailTurns++;
@@ -39,17 +50,31 @@ export const handleJailAction = async (io: Server, socket: Socket) => {
 
         case "pay":
           if (player.money < 100) {
-            return console.log(`❌ Игрок ${playerId} не может заплатить $100`);
+            return console.log(`❌ ${username} не может заплатить $100`);
           }
           player.money -= 100;
           player.jailed = false;
           player.jailTurns = 0;
-          console.log(`💵 Игрок ${playerId} заплатил $100 и вышел из тюрьмы`);
+          console.log();
+          sendRoomMessage(
+            io,
+            roomId,
+            playerId,
+            `💵 ${username} заплатил $100 и вышел из тюрьмы`,
+            "EVENT"
+          );
           break;
         case "wait":
           player.jailTurns++;
           console.log(
-            `🕓 Игрок ${playerId} пропускает ход (${player.jailTurns}/3)`
+            `🕓 Игрок ${username} пропускает ход (${player.jailTurns}/3)`
+          );
+          sendRoomMessage(
+            io,
+            roomId,
+            playerId,
+            `🕓 ${username} пропускает ход (${player.jailTurns}/3)`,
+            "EVENT"
           );
           break;
 
@@ -61,6 +86,13 @@ export const handleJailAction = async (io: Server, socket: Socket) => {
         player.jailed = false;
         player.jailTurns = 0;
         console.log(`⏰ Игрок ${playerId} отсидел своё и вышел`);
+        sendRoomMessage(
+          io,
+          roomId,
+          playerId,
+          `⏰ ${username} отсидел своё и вышел`,
+          "EVENT"
+        );
       } else if (player.jailed) {
         room.currentTurnPlayerId = await nextTurn(room, playerId);
       }

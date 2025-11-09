@@ -1,7 +1,12 @@
 import { Server, Socket } from "socket.io";
 import { saveRoomToDB } from "../../../services/gameService.js";
 import { cells } from "../../../data/ceil.js";
-import { findRoomAndPlayer, getCellState } from "../../utils/roomUtils.js";
+import {
+  findRoomAndPlayer,
+  getCellState,
+  getUserData,
+  sendRoomMessage,
+} from "../../utils/roomUtils.js";
 import { CellState } from "../../../types/types.js";
 import { safeSocket } from "../../utils/safeSocket.js";
 import { GAME_EVENTS } from "../events/gameEvents.js";
@@ -11,7 +16,7 @@ export const handleBuyCell = async (io: Server, socket: Socket) => {
     GAME_EVENTS.BUY_CELL,
     safeSocket(async (data: any) => {
       const roomId = data.roomId;
-      const playerId = socket.data.user.id;
+      const { playerId, username } = getUserData(socket);
       const ceil = cells;
 
       const { room, player } = await findRoomAndPlayer(roomId, playerId);
@@ -24,18 +29,18 @@ export const handleBuyCell = async (io: Server, socket: Socket) => {
         targetCell.price === undefined
       )
         return console.log(
-          `❌ Игрок ${playerId} не может купить клетку, ${targetCell?.name}`
+          `❌ Игрок ${username} не может купить клетку, ${targetCell?.name}`
         );
 
       const { cellState, cell } = getCellState(room, cellPos);
 
       if (cell)
         return console.log(
-          `❌ Клетка ${targetCell.name} уже принадлежит ${cell.ownerId}`
+          `❌ Клетка ${targetCell.name} уже принадлежит ${username}`
         );
       if (player.money < targetCell.price)
         return console.log(
-          `❌ Игрок ${playerId} не имеет достаточно денег для покупки клетки ${targetCell.name}`
+          `❌ Игрок ${username} не имеет достаточно денег для покупки клетки ${targetCell.name}`
         );
 
       player.money -= targetCell.price;
@@ -58,7 +63,14 @@ export const handleBuyCell = async (io: Server, socket: Socket) => {
 
       // Сохраняем и уведомляем всех
       await saveRoomToDB(room);
-      console.log(`🎁 Игрок ${playerId} купил клетку ${targetCell.name}`);
+      console.log(`🏠 Игрок ${username} купил клетку ${targetCell.name}`);
+      sendRoomMessage(
+        io,
+        roomId,
+        playerId,
+        `🏠 Игрок ${username} купил клетку ${targetCell.name}`,
+        "EVENT"
+      );
       io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
     })
   );

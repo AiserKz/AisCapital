@@ -10,7 +10,7 @@ import apiFetch from "../../utils/apiFetch";
 interface CreateRoomDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateRoom: (roomName: string) => void;
+  onCreateRoom: (roomId: string) => void;
 }
 
 export function CreateRoomDialog({

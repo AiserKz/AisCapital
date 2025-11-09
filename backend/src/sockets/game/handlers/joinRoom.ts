@@ -13,14 +13,15 @@ export const handleJoinRoom = async (io: Server, socket: Socket) => {
     GAME_EVENTS.JOIN_ROOM,
     safeSocket(async (roomId: string) => {
       socket.join(roomId);
-      if (!socket.data.user.id)
-        return console.log(`👤 Пользователь не авторизован`);
       const { playerId, username } = getUserData(socket);
 
       const room = await getRoomById(roomId);
 
       const player = room?.players.find((p) => p.playerId === playerId);
       if (player) {
+        console.log(
+          `👤 Пользователь ${username} уже вошел в комнату ${room?.name}`
+        );
         player.disconnected = false;
         await saveRoomToDB(room);
         io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
@@ -28,7 +29,7 @@ export const handleJoinRoom = async (io: Server, socket: Socket) => {
       }
 
       console.log(
-        `👤 Пользователь ${username} присоединился к комнате ${roomId}`
+        `👤 Пользователь ${username} присоединился к комнате ${room?.name}`
       );
       const playerInRoom = await addPlayerToRoom(roomId, playerId);
       io.to(roomId).emit(GAME_EVENTS.PLAYER_JOINED, playerInRoom);

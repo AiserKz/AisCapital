@@ -4,6 +4,7 @@ import {
   findRoomAndPlayer,
   getCellState,
   getUserData,
+  sendRoomMessage,
 } from "../../utils/roomUtils.js";
 import { nextTurn } from "../../utils/nextTurn.js";
 import { safeSocket } from "../../utils/safeSocket.js";
@@ -22,6 +23,20 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
       const { playerId, username } = getUserData(socket);
 
       const { room, player } = await findRoomAndPlayer(roomId, playerId);
+
+      if (room.status !== "IN_PROGRESS") {
+        console.log(
+          `🎲 Игра в комнате ${room.name} еще не началась или же уже окончена!`
+        );
+        sendRoomMessage(
+          io,
+          roomId,
+          playerId,
+          "Игра в комнате еще не началась или же уже окончена!",
+          "EVENT"
+        );
+        return callback({ success: false, message: "Комната не в игре!" });
+      }
 
       if (room.currentPayment) {
         return callback({
@@ -52,6 +67,7 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
       console.log(
         `🎲 Игрок ${username} бросил кубики: ${dice1} + ${dice2} = ${finalValue}`
       );
+
       socket
         .to(roomId)
         .emit(GAME_EVENTS.PLAYER_HAS_MOVED, playerId, dice1, dice2);
@@ -65,12 +81,34 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
       if (player.positionOnBoard + finalValue >= totalCells) {
         player.money += 200;
         console.log(`💰 Игрок ${username} прошёл через старт и получил $200`);
+        sendRoomMessage(
+          io,
+          roomId,
+          playerId,
+          `💰 Игрок ${username} прошёл через старт и получил $200`,
+          "EVENT"
+        );
       }
 
       player.positionOnBoard = newPosition;
 
       if (dice1 !== dice2) {
+        sendRoomMessage(
+          io,
+          roomId,
+          playerId,
+          `🎲 Игрок ${username} бросил кубики: \n ${dice1} + ${dice2} = ${finalValue}`,
+          "EVENT"
+        );
         room.currentTurnPlayerId = await nextTurn(room, playerId);
+      } else {
+        sendRoomMessage(
+          io,
+          roomId,
+          playerId,
+          `🎲 Игрок ${username} получил дубль ${dice1} + ${dice2}, и ходит ещё раз`,
+          "EVENT"
+        );
       }
 
       const currentCell = cells.find((c) => c.id === newPosition);
@@ -79,6 +117,13 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           const taxAmount = Math.floor(player.money * 0.1) + 100;
           player.money -= taxAmount;
           console.log(`💸 Игрок ${username} заплатил налог $${taxAmount}`);
+          sendRoomMessage(
+            io,
+            roomId,
+            playerId,
+            `💸 Игрок ${username} заплатил налог $${taxAmount}`,
+            "EVENT"
+          );
           break;
         case "CHANCE":
           const randomCard =
@@ -91,7 +136,7 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
             playerId,
             cardId: randomCard.id,
             timestamp: Date.now(),
-            text: randomCard.text,
+            text: `${username} ${randomCard.text}`,
           };
 
           io.emit(GAME_EVENTS.MESSAGE, {
@@ -104,6 +149,13 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           if (currentCell?.id === 10 || currentCell?.id === 30) {
             player.jailed = true;
             console.log(`🚓 Игрок ${username} попал в тюрьму`);
+            sendRoomMessage(
+              io,
+              roomId,
+              playerId,
+              `🚓 Игрок ${username} попал в тюрьму`,
+              "EVENT"
+            );
             player.positionOnBoard = 10;
           }
           break;

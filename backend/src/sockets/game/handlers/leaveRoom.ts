@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
 import {
+  deleteRoom,
   getRoomById,
   removePlayerFromRoom,
   saveRoomToDB,
@@ -24,6 +25,14 @@ export const handleLeaveRoom = async (io: Server, socket: Socket) => {
       if (room.status === "WAITING") {
         await removePlayerFromRoom(roomId, playerId);
         io.to(roomId).emit(GAME_EVENTS.PLAYER_LEFT, playerId);
+        // if (room.hostId === playerId) {
+        //   io.to(roomId).emit(GAME_EVENTS.HOST_LEAVE, "Хост покинул комнату");
+        //   deleteRoom(roomId);
+        //   return;
+        // }
+
+        const updatedRoom = await getRoomById(roomId);
+        io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, updatedRoom);
       } else if (room.status === "IN_PROGRESS" || room.status === "STARTING") {
         const player = room.players.find((p) => p.playerId === playerId);
         if (player) {

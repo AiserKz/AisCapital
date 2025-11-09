@@ -27,9 +27,40 @@ export const getRoomList = async () => {
   });
 };
 
+export const getActiveRooms = async () => {
+  return prisma.gameRoom.findMany({
+    where: {
+      status: {
+        in: ["WAITING", "STARTING", "IN_PROGRESS"],
+      },
+    },
+    include: {
+      players: {
+        include: {
+          player: {
+            select: {
+              id: true,
+              name: true,
+              avatar: true,
+              level: true,
+            },
+          },
+        },
+      },
+      host: {
+        select: {
+          id: true,
+          name: true,
+          avatar: true,
+        },
+      },
+    },
+  });
+};
+
 export const getRoomById = async (id: string) => {
   return prisma.gameRoom.findFirst({
-    where: { id },
+    where: { id: id },
     include: {
       players: {
         include: {
@@ -71,7 +102,7 @@ export const createRoom = async (data: {
       players: {
         create: {
           playerId: data.hostId,
-          position: 0,
+          position: 1,
           isReady: true,
         },
       },
@@ -104,6 +135,15 @@ export const deleteRoom = async (roomId: string) => {
   return prisma.gameRoom.delete({ where: { id: roomId } });
 };
 
+export const playerExistsInRoom = async (roomId: string, playerId: string) => {
+  return prisma.playerInRoom.findFirst({
+    where: {
+      playerId,
+      roomId,
+    },
+  });
+};
+
 export const addPlayerToRoom = async (roomId: string, playerId: string) => {
   const room = await getRoomById(roomId);
   if (!room) throw new Error("Комната не найдена");
@@ -113,7 +153,8 @@ export const addPlayerToRoom = async (roomId: string, playerId: string) => {
   const existingPlayer = room.players.find(
     (player) => player.playerId === playerId
   );
-  if (existingPlayer) throw new Error("Игрок уже в комнате");
+  const existsDB = await playerExistsInRoom(roomId, playerId);
+  if (existingPlayer || existsDB) throw new Error("Игрок уже в комнате");
 
   const takenPositions = room.players
     .map((p) => p.position)
@@ -121,7 +162,7 @@ export const addPlayerToRoom = async (roomId: string, playerId: string) => {
     .sort((a, b) => a - b);
 
   let newPosition = 1;
-  for (let i = 1; i < room.maxPlayer; i++) {
+  for (let i = 1; i <= room.maxPlayer; i++) {
     if (!takenPositions.includes(i)) {
       newPosition = i;
       break;
@@ -130,8 +171,18 @@ export const addPlayerToRoom = async (roomId: string, playerId: string) => {
 
   console.log("🧩 Назначена позиция:", newPosition);
 
-  return prisma.playerInRoom.create({
-    data: {
+  return prisma.playerInRoom.upsert({
+    where: {
+      playerId_roomId: {
+        playerId,
+        roomId,
+      },
+    },
+    update: {
+      position: newPosition,
+      isReady: false,
+    },
+    create: {
       roomId,
       playerId,
       position: newPosition,
@@ -164,17 +215,33 @@ export const removePlayerFromRoom = async (
   });
 };
 
+export const archiveRoomData = async (roomId: string) => {
+  const players = await prisma.playerInRoom.findMany({ where: { roomId } });
+  for (const p of players) {
+    await prisma.playerGameHistory.create({
+      data: {
+        playerId: p.playerId,
+        roomId: p.roomId,
+        finalMoney: p.money,
+        finalElo: 1200,
+        result: p.bankrupt ? "lose" : "win",
+        joinedAt: p.joinedAt,
+        leftAt: new Date(),
+      },
+    });
+  }
+  await prisma.playerInRoom.deleteMany({ where: { roomId } });
+};
+
 export const updatePlayerInRoom = async (
   roomId: string,
   playerId: string,
   isReady: boolean
 ) => {
-  return prisma.playerInRoom.update({
+  return prisma.playerInRoom.updateMany({
     where: {
-      playerId_roomId: {
-        playerId,
-        roomId,
-      },
+      playerId,
+      roomId,
     },
     data: {
       isReady,
@@ -243,6 +310,7 @@ export const saveRoomToDB = async (room: any) => {
             disconnected: p.disconnected,
             jailTurns: p.jailTurns,
             isFrozen: p.isFrozen,
+            isReady: p.isReady,
           },
         })),
       },

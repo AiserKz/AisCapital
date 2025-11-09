@@ -24,7 +24,7 @@ export default function Lobby() {
       <CreateRoomDialog
         open={isCreateRoomModalOpen}
         onOpenChange={setIsCreateRoomModalOpen}
-        onCreateRoom={() => {}}
+        onCreateRoom={(roomId: string) => navigate(`/room/${roomId}`)}
       />
       {/* Левая колонка статы и лидерборд */}
       <div className="flex flex-col gap-6 lg:w-1/3">

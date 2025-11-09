@@ -14,7 +14,7 @@ import Label from "./ui/label";
 import apiFetch from "../utils/apiFetch";
 
 export function RoomList() {
-  const { roomList } = useApp();
+  const { roomList, user } = useApp();
   const navigate = useNavigate();
   const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
   const [password, setPassword] = useState<string>("");
@@ -91,7 +91,11 @@ export function RoomList() {
           transition={{ duration: 0.3, delay: index * 0.05 }}
           whileHover={{ scale: 1.01 }}
         >
-          <Card className="shadow-sm hover:shadow-md transition-shadow">
+          <Card
+            className={`shadow-sm hover:shadow-md transition-shadow ${
+              room.host.id === user?.id ? "border-success" : ""
+            }`}
+          >
             <div className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4 flex-1">

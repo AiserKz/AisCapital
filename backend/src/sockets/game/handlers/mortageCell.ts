@@ -2,7 +2,12 @@ import { Server, Socket } from "socket.io";
 import { saveRoomToDB } from "../../../services/gameService.js";
 import { safeSocket } from "../../utils/safeSocket.js";
 import { GAME_EVENTS } from "../events/gameEvents.js";
-import { findRoomAndPlayer, getCellState } from "../../utils/roomUtils.js";
+import {
+  findRoomAndPlayer,
+  getCellState,
+  getUserData,
+  sendRoomMessage,
+} from "../../utils/roomUtils.js";
 import { cells } from "../../../data/ceil.js";
 import { CurrentPaymentType } from "../../../types/types.js";
 
@@ -11,7 +16,8 @@ export const handleMortageCell = async (io: Server, socket: Socket) => {
     GAME_EVENTS.MORTAGE_CELL,
     safeSocket(async (data: any) => {
       const { roomId, cellId } = data;
-      const playerId = socket.data.user.id;
+      const { playerId, username } = getUserData(socket);
+
       const origCell = cells.find((c) => c.id === cellId);
 
       const { room, player } = await findRoomAndPlayer(roomId, playerId);
@@ -35,16 +41,25 @@ export const handleMortageCell = async (io: Server, socket: Socket) => {
       player.money += mortgageValue;
       cell.mortgaged = true;
       console.log(
-        `💰 Игрок ${playerId} заложил клетку ${cellId} и получил $${mortgageValue}`
+        `💰 Игрок ${username} заложил клетку ${origCell?.name} и получил $${mortgageValue}`
+      );
+      sendRoomMessage(
+        io,
+        room.id,
+        playerId,
+        `💰 Игрок ${username} заложил клетку ${origCell?.name} и получил $${mortgageValue}`,
+        "EVENT"
       );
 
       if (player.money >= 0 && player.isFrozen) {
         player.isFrozen = false;
-        io.to(room.id).emit(GAME_EVENTS.MESSAGE, {
+        sendRoomMessage(
+          io,
+          room.id,
           playerId,
-          text: `✅ Игрок ${player.player.name} вышел из банкротства!`,
-          type: "EVENT",
-        });
+          `✅ Игрок ${player.player.name} вышел из банкротства!`,
+          "EVENT"
+        );
       }
 
       room.cellState = cellState.map((c) => (c.id === cellId ? cell : c));

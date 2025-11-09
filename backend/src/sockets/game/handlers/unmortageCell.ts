@@ -6,6 +6,7 @@ import {
   findRoomAndPlayer,
   getCellState,
   getUserData,
+  sendRoomMessage,
 } from "../../utils/roomUtils.js";
 import { cells } from "../../../data/ceil.js";
 
@@ -42,7 +43,14 @@ export const handleUnMortageCell = async (io: Server, socket: Socket) => {
       cell.mortgaged = false;
 
       console.log(
-        `💵 Игрок ${username} выкупил клетку ${cellId} за ${unmortgageCost}$`
+        `💵 Игрок ${username} выкупил клетку ${origCell?.name} за ${unmortgageCost}$`
+      );
+      sendRoomMessage(
+        io,
+        roomId,
+        playerId,
+        `${username} выкупил клетку ${origCell?.name} за ${unmortgageCost}$`,
+        "EVENT"
       );
 
       room.cellState = cellState.map((c) => (c.id === cellId ? cell : c));

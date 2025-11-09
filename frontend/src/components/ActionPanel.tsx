@@ -10,17 +10,24 @@ import {
   SkipForward,
   DollarSign,
   Clock,
+  Check,
+  X,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Button from "./ui/button";
 import Card from "./ui/card";
 import { ProgressBar } from "./ui/progress";
 import { toast } from "sonner";
-import type { CellState, PlayerInRoomType } from "../types/types";
+import type {
+  CellState,
+  PlayerInRoomType,
+  RoomDetailType,
+} from "../types/types";
 import type { MoveResponse } from "../utils/hook/useGameSocket";
 import useCellActions from "../utils/hook/useCellActions";
 
 interface ActionPanelProps {
+  currentRoom: RoomDetailType | null;
   currentUser?: PlayerInRoomType;
   movePlayer: () => Promise<MoveResponse>;
   isCurrentTurn: boolean;
@@ -30,11 +37,14 @@ interface ActionPanelProps {
   isBuying?: boolean;
   cellState: CellState[];
   isBlocked?: boolean;
+  isMortage?: boolean;
   handleMortgaged: () => void;
   handleJailAction: (action: "roll" | "pay" | "wait") => void;
+  handleReady: () => void;
 }
 
 export function ActionPanel({
+  currentRoom,
   currentUser,
   movePlayer,
   isCurrentTurn,
@@ -44,13 +54,16 @@ export function ActionPanel({
   isBuying,
   cellState,
   isBlocked,
+  isMortage,
   handleMortgaged,
   handleJailAction,
+  handleReady,
 }: ActionPanelProps) {
   if (!currentUser) return null;
   const [diceValue, setDiceValue] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(30);
+
   const [displayDice, setDisplayDice] = useState<{
     dice1: number;
     dice2: number;
@@ -77,10 +90,6 @@ export function ActionPanel({
       const result = await movePlayer();
 
       setDiceValue(result.dice1 + result.dice2);
-
-      toast.success(
-        `🎲 Выпало ${result.dice1} и ${result.dice2}! Перемещаемся на ${result.position}`
-      );
 
       setIsRolling(false);
     });
@@ -140,6 +149,8 @@ export function ActionPanel({
     getDiceIcon(isRolling ? displayDice.dice1 : dice.dice1) || null;
   const DiceIcon2 =
     getDiceIcon(isRolling ? displayDice.dice2 : dice.dice2) || null;
+
+  const gameIsReady = currentRoom?.status === "WAITING";
 
   const renderButtons = () => {
     if (canBuy) {
@@ -283,6 +294,16 @@ export function ActionPanel({
                 <DollarSign className="w-4 h-4" />
                 Оплатить 100$
               </Button>
+            ) : isMortage ? (
+              <Button
+                disabled={!isCurrentTurn || isBlocked}
+                variant="warning"
+                className="w-full gap-2 justify-start"
+                onClick={handleMortgaged}
+              >
+                <DollarSign className="w-4 h-4" />
+                Снять залог
+              </Button>
             ) : (
               <Button
                 disabled={!isCurrentTurn || isBlocked}
@@ -319,6 +340,29 @@ export function ActionPanel({
               </Button>
             )}
           </motion.div>
+          {gameIsReady && (
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              {!currentUser.isReady ? (
+                <Button
+                  variant="success"
+                  className="w-full gap-2 justify-start"
+                  onClick={handleReady}
+                >
+                  <Check className="w-4 h-4" />
+                  Готов
+                </Button>
+              ) : (
+                <Button
+                  variant="error"
+                  className="w-full gap-2 justify-start"
+                  onClick={handleReady}
+                >
+                  <X className="w-4 h-4" />
+                  Не готов
+                </Button>
+              )}
+            </motion.div>
+          )}
         </div>
 
         {/* Stats */}

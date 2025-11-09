@@ -1,6 +1,7 @@
-import { Socket } from "socket.io";
+import { Server, Socket } from "socket.io";
 import { getRoomById } from "../../services/gameService.js";
 import { CellState, CurrentPaymentType } from "../../types/types.js";
+import { GAME_EVENTS } from "../game/events/gameEvents.js";
 
 interface Room {
   id: string;
@@ -64,4 +65,18 @@ export const getUserData = (socket: Socket) => {
   const playerId = socket.data.user.id;
   const username = socket.data.user.name;
   return { playerId, username };
+};
+
+export const sendRoomMessage = (
+  io: Server,
+  roomId: string,
+  playerId: string,
+  message: string,
+  type: "CHANCE" | "EVENT"
+) => {
+  io.to(roomId).emit(GAME_EVENTS.MESSAGE, {
+    playerId,
+    text: message,
+    type: type,
+  });
 };

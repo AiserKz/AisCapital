@@ -3,6 +3,7 @@ import {
   findRoomAndPlayer,
   getCurrentPayments,
   getUserData,
+  sendRoomMessage,
 } from "../../utils/roomUtils.js";
 import { processRentPayment } from "../../../services/paymentService.js";
 import { safeSocket } from "../../utils/safeSocket.js";
@@ -55,6 +56,13 @@ export const handlePayRent = async (io: Server, socket: Socket) => {
         rent,
       });
 
+      sendRoomMessage(
+        io,
+        roomId,
+        playerId,
+        `💵 ${payer.player.name} заплатил ${rent}$ игроку ${owner.player.name}`,
+        "EVENT"
+      );
       console.log(
         `💵 ${payer.player.name} заплатил ${rent}$ ${owner.player.name} за клетку ${cellId}`
       );

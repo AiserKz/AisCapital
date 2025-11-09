@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 import { API_BASE_URL } from "../../config";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { CurrentPaymentType, RoomDetailType } from "../../types/types";
 
 const socket = io(API_BASE_URL, {
@@ -26,6 +26,9 @@ const GAME_EVENTS = {
   CONFIRM_CHANCE: "confirm_chance",
   JAIL_ACTION: "jail_action",
   BUY_HOUSE: "buy_house",
+  GAME_OVER: "game_over",
+  IS_READY: "is_ready",
+  HOST_LEAVE: "host_leave",
 } as const;
 
 export type MoveResponse = {
@@ -45,10 +48,15 @@ export default function useGameSocket(
     updater: (prev: RoomDetailType | null) => RoomDetailType | null
   ) => void,
   setCurrentPayment?: (payment: CurrentPaymentType) => void,
-  onMessage?: (message: any) => void
+  onMessage?: (message: any) => void,
+  roomClosed?: (message: string) => void
 ) {
+  const hasJoinedRef = useRef(false);
   useEffect(() => {
-    if (!roomId || !playerId) return;
+    if (!roomId || !playerId || hasJoinedRef.current) return;
+    hasJoinedRef.current = true;
+
+    console.log("Подключение к комнате");
     socket.emit(GAME_EVENTS.JOIN_ROOM, roomId);
 
     socket.on(GAME_EVENTS.PLAYER_JOINED, (playerInRoom) => {
@@ -90,15 +98,25 @@ export default function useGameSocket(
       onMessage?.(message);
     });
 
+    socket.on(GAME_EVENTS.HOST_LEAVE, (message) => {
+      console.log(GAME_EVENTS.HOST_LEAVE, message);
+      roomClosed?.(message);
+    });
+
     return () => {
       socket.emit(GAME_EVENTS.LEAVE_ROOM, roomId);
       socket.off(GAME_EVENTS.PLAYER_JOINED);
-
       socket.off(GAME_EVENTS.ROOM_UPDATE);
       socket.off(GAME_EVENTS.PLAYER_LEFT);
       socket.off(GAME_EVENTS.PLAYER_HAS_MOVED);
+      socket.off(GAME_EVENTS.RENT_REQUIRED);
+      socket.off(GAME_EVENTS.MESSAGE);
     };
   }, [roomId, playerId]);
+
+  useEffect(() => {
+    hasJoinedRef.current = false;
+  }, [roomId]);
 
   const movePlayer = () => {
     return new Promise<MoveResponse>((resolve, reject) => {
@@ -144,6 +162,10 @@ export default function useGameSocket(
     socket.emit(GAME_EVENTS.BUY_HOUSE, { roomId, cellId, type });
   };
 
+  const handleIsReady = () => {
+    socket.emit(GAME_EVENTS.IS_READY, roomId);
+  };
+
   return {
     movePlayer,
     buyCell,
@@ -153,5 +175,6 @@ export default function useGameSocket(
     confrimChance,
     handleJailAction,
     handleBuyHouse,
+    handleIsReady,
   };
 }

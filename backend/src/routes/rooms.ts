@@ -3,13 +3,14 @@ import {
   addRoom,
   getRoom,
   getRooms,
+  getRoomsIsGame,
   leavePlayerFromRoom,
 } from "../controllers/roomsController.js";
 import { authMiddleware } from "../utils/jwt.js";
 
 const roomRouter = Router();
 
-roomRouter.get("/", getRooms);
+roomRouter.get("/", getRoomsIsGame);
 roomRouter.post("/", authMiddleware, addRoom);
 roomRouter.get("/:id", authMiddleware, getRoom);
 

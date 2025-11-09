@@ -3,6 +3,7 @@ import {
   addPlayerToRoom,
   checkUserRoomExists,
   createRoom,
+  getActiveRooms,
   getRoomById,
   getRoomList,
   removePlayerFromRoom,
@@ -14,11 +15,14 @@ export const getRooms = async (req: Request, res: Response) => {
   return res.json(rooms);
 };
 
+export const getRoomsIsGame = async (req: Request, res: Response) => {
+  const rooms = await getActiveRooms();
+  return res.json(rooms);
+};
+
 export const getRoom = async (req: Request, res: Response) => {
   const roomId = req.params.id;
-  const userId = res.locals.user.id;
   const { password } = req.query;
-  const user = await getPlayerById(userId);
   const room = await getRoomById(roomId);
   if (!room) {
     return res.status(404).json({ message: "Комната не найдена" });
@@ -69,6 +73,7 @@ export const addRoom = async (req: Request, res: Response) => {
 
     const existingRoom = await checkUserRoomExists(hostId);
     if (existingRoom) {
+      console.log("Пользователь уже имеет активную комнату", existingRoom);
       return res.status(400).json({
         message: "У вас уже есть активная комната",
         existingRoom: {
@@ -107,10 +112,7 @@ export const addRoom = async (req: Request, res: Response) => {
       createdAt: room.createdAt,
     };
 
-    res.status(201).json({
-      message: "Комната создана успешно",
-      room: roomResponse,
-    });
+    res.status(201).json(roomResponse);
   } catch (error) {
     console.error("Create room error:", error);
     res.status(500).json({ message: "Ошибка при создании комнаты" });

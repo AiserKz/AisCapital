@@ -8,24 +8,25 @@ datasource db {
 }
 
 model Player {
-    id           String         @id @default(cuid())
-    email        String
-    name         String
-    password     String
-    avatar       String?
-    level        Int            @default(0)
-    totalGames   Int            @default(0)
-    wins         Int            @default(0)
-    winRate      Float          @default(0.0)
-    currentXp    Int            @default(0)
-    nextLevelXp  Int            @default(1000)
-    elo          Int            @default(1000)
-    createdAt    DateTime       @default(now())
-    updateAt     DateTime       @updatedAt
-    lastSeen     DateTime?
-    status       Int            @default(1)
-    GameRoom     GameRoom[]
-    PlayerInRoom PlayerInRoom[]
+    id                String              @id @default(cuid())
+    email             String
+    name              String
+    password          String
+    avatar            String?
+    level             Int                 @default(0)
+    totalGames        Int                 @default(0)
+    wins              Int                 @default(0)
+    winRate           Float               @default(0.0)
+    currentXp         Int                 @default(0)
+    nextLevelXp       Int                 @default(1000)
+    elo               Int                 @default(1000)
+    createdAt         DateTime            @default(now())
+    updateAt          DateTime            @updatedAt
+    lastSeen          DateTime?
+    status            Int                 @default(1)
+    GameRoom          GameRoom[]
+    PlayerInRoom      PlayerInRoom[]
+    PlayerGameHistory PlayerGameHistory[]
 
     @@index([wins])
     @@index([elo])
@@ -50,10 +51,11 @@ model GameRoom {
     currentPayment Json?
     pendingChance  Json?
 
-    createdAt  DateTime  @default(now())
-    updatedAt  DateTime  @updatedAt
-    startedAt  DateTime?
-    finishedAt DateTime?
+    createdAt         DateTime            @default(now())
+    updatedAt         DateTime            @updatedAt
+    startedAt         DateTime?
+    finishedAt        DateTime?
+    PlayerGameHistory PlayerGameHistory[]
 
     @@index([status])
     @@index([isPrivate])
@@ -88,8 +90,23 @@ model PlayerInRoom {
     player Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
     room   GameRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
-    @@unique([playerId, roomId])
+    @@unique([roomId, playerId], name: "playerId_roomId")
     @@index([roomId])
+}
+
+model PlayerGameHistory {
+    id         String   @id @default(cuid())
+    playerId   String
+    roomId     String
+    finalMoney Int
+    finalElo   Int
+    result     String // "win", "lose", "draw"
+    duration   Int?
+    joinedAt   DateTime
+    leftAt     DateTime
+
+    player Player   @relation(fields: [playerId], references: [id])
+    room   GameRoom @relation(fields: [roomId], references: [id])
 }
 
 enum GameStatus {

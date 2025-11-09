@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 import { RoomWithPlayers } from "../../types/types.js";
-import { getCellState } from "./roomUtils.js";
+import { getCellState, sendRoomMessage } from "./roomUtils.js";
 import { GAME_EVENTS } from "../game/events/gameEvents.js";
 import { saveRoomToDB } from "../../services/gameService.js";
 
@@ -58,10 +58,13 @@ export const checkBankruptcy = async (
   if (alivePlayers.length === 1) {
     const winner = alivePlayers[0];
     console.log(`🏆 Победитель — ${winner.player.name}`);
-    io.to(room.id).emit(GAME_EVENTS.MESSAGE, {
-      text: `🏆 Победитель — ${winner.player.name}!`,
-      type: "EVENT",
-    });
+    sendRoomMessage(
+      io,
+      room.id,
+      winner.playerId,
+      `🏆 Победитель — ${winner.player.name}!`,
+      "EVENT"
+    );
     room.status = "FINISHED";
   }
 

@@ -2,13 +2,19 @@ import Card from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Users, Home, DollarSign, Crown } from "lucide-react";
 import { motion } from "framer-motion";
-import type { CellState, PlayerInRoomType, UserType } from "../types/types";
+import type {
+  CellState,
+  PlayerInRoomType,
+  RoomDetailType,
+  UserType,
+} from "../types/types";
 
 interface PlayerListProps {
   players: PlayerInRoomType[];
   user: UserType | null;
   isCurrentTrunPlayerId?: string;
   cellState?: CellState[];
+  currentRoom?: RoomDetailType;
 }
 
 export function PlayerList({
@@ -16,6 +22,7 @@ export function PlayerList({
   user,
   isCurrentTrunPlayerId,
   cellState,
+  currentRoom,
 }: PlayerListProps) {
   const richPlayers = players.reduce((prev, curr) => {
     return curr.money > prev.money ? curr : prev;
@@ -36,7 +43,7 @@ export function PlayerList({
       <div>
         <h2 className="flex items-center gap-2 text-foreground">
           <Users className="w-5 h-5" />
-          Игроки ({players.length})
+          Игроки ({players.length} / {currentRoom?.maxPlayer})
         </h2>
       </div>
       <div className="space-y-2">
@@ -46,6 +53,7 @@ export function PlayerList({
             [];
           const totalOwned = ownerCells.length;
           const isDisconnected = _player.disconnected;
+          const isReady = _player.isReady;
           return (
             <motion.div
               key={_player.id}
@@ -101,6 +109,16 @@ export function PlayerList({
                         Ход
                       </Badge>
                     )}
+                    {currentRoom?.status === "WAITING" &&
+                      (isReady ? (
+                        <Badge variant="success" className="text-xs truncate">
+                          Готов
+                        </Badge>
+                      ) : (
+                        <Badge variant="error" className="text-xs truncate">
+                          Не готов
+                        </Badge>
+                      ))}
                   </div>
 
                   {/* статус */}

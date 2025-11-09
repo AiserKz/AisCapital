@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Settings, Info, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "../components/ui/button";
@@ -20,6 +20,8 @@ import type {
 import { useApp } from "../context/AppContext";
 import useGameSocket from "../utils/hook/useGameSocket";
 import { cells } from "../test/data";
+import { GameMessage } from "../components/modal/GameMessage";
+import { GameMessageEvent } from "../components/modal/GameMessageEvent";
 
 export function GameRoom() {
   const { roomId } = useParams();
@@ -38,6 +40,13 @@ export function GameRoom() {
     useState<PendingChanceType | null>();
 
   const [message, setMessage] = useState<string | null>(null);
+  const messageTimeout = useRef<number | null>(null);
+
+  const [logs, setLogs] = useState<
+    { message: string; type: "CHANCE" | "EVENT" }[]
+  >([]);
+
+  const navigate = useNavigate();
 
   const [dice, setDice] = useState<{ dice1: number; dice2: number }>({
     dice1: 1,
@@ -60,15 +69,35 @@ export function GameRoom() {
     text: string;
     type: "CHANCE" | "EVENT";
   }) => {
-    toast.info(message.text);
     if (message.type === "CHANCE") {
       setCurrentChance(message);
+      writeLogs(message.text, "CHANCE");
     } else if (message.type === "EVENT") {
+      if (messageTimeout.current) {
+        clearTimeout(messageTimeout.current);
+      }
+      writeLogs(message.text, "EVENT");
       setMessage(message.text);
-      setTimeout(() => {
+      messageTimeout.current = setTimeout(() => {
         setMessage(null);
-      }, 30000);
+      }, 7000);
     }
+  };
+
+  const writeLogs = async (message: string, type: "CHANCE" | "EVENT") => {
+    let _logs = logs;
+    console.log("Записаваю логи");
+    if (_logs.length > 5) {
+      _logs = _logs.slice(0, 5);
+      console.log("обрезаю логи");
+    }
+
+    setLogs([..._logs, { message, type }]);
+  };
+
+  const roomClosed = (message: string) => {
+    toast.error(message);
+    navigate("/");
   };
 
   const {
@@ -80,16 +109,24 @@ export function GameRoom() {
     confrimChance,
     handleJailAction,
     handleBuyHouse,
+    handleIsReady,
   } = useGameSocket(
     roomId,
     user?.id,
     handleRollDice,
     setCurrentRoom,
     setCurrentPayment,
-    onMessage
+    onMessage,
+    roomClosed
   );
 
-  const navigate = useNavigate();
+  useEffect(() => {
+    return () => {
+      if (messageTimeout.current) {
+        clearTimeout(messageTimeout.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const fetchRoom = async () => {
@@ -198,118 +235,6 @@ export function GameRoom() {
       </motion.header>
 
       {currentPayment && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center z-10"
-          >
-            <div className="bg-base-200 shadow-lg border border-base-300 p-6 rounded-2xl w-[320px] text-center relative shadow-warning/30">
-              <h3 className="text-lg font-semibold text-base-content mb-3">
-                💸 Оплата ренты
-              </h3>
-
-              <p className="text-base text-base-content/80">
-                {isMyPayment ? (
-                  <>
-                    Вы должны заплатить{" "}
-                    <span className="text-primary font-bold text-lg">
-                      {currentPayment.rent}$
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    Игрок{" "}
-                    <span className="font-semibold text-base-content">
-                      {
-                        currentRoom.players.find(
-                          (p) => p.playerId === currentPayment.payerId
-                        )?.player.name
-                      }
-                    </span>{" "}
-                    должен заплатить{" "}
-                    <span className="text-primary font-bold text-lg">
-                      {currentPayment.rent}$
-                    </span>
-                  </>
-                )}
-              </p>
-
-              <p className="text-sm text-base-content/70 mt-2">
-                Владелец:{" "}
-                <span className="font-medium text-base-content">
-                  {currentRoom.players.find(
-                    (p) => p.playerId === currentPayment.ownerId
-                  )?.player.name || "Неизвестный игрок"}
-                </span>
-              </p>
-
-              <p className="text-xs text-base-content/50 mt-2">
-                Клетка №{currentPayment.cellId}
-              </p>
-              {isMyPayment && (
-                <div className="mt-5 flex justify-center gap-3">
-                  <Button
-                    variant="ghost"
-                    size="medium"
-                    className="flex-1"
-                    onClick={() => setIsMortage(true)}
-                  >
-                    Заложить
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="medium"
-                    className="flex-1"
-                    onClick={() => payRent()}
-                  >
-                    Оплатить
-                  </Button>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      )}
-      {currentChance && (
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center z-20"
-        >
-          <div className="bg-base-200 shadow-lg border border-base-300 p-6 rounded-2xl w-[320px] text-center relative shadow-warning/30">
-            <h3 className="text-lg font-semibold text-base-content mb-3">
-              Шанс:{" "}
-              {
-                currentRoom.players.find(
-                  (p) => p.playerId === currentChance.playerId
-                )?.player.name
-              }
-            </h3>
-            <span className="text-primary font-bold text-lg">
-              {currentChance.text}
-            </span>
-            {currentChance.playerId === currentUser.playerId && (
-              <div className="mt-5 flex justify-center gap-3">
-                <Button
-                  variant="success"
-                  size="medium"
-                  className="flex-1"
-                  onClick={() => confrimChance()}
-                >
-                  Принять
-                </Button>
-              </div>
-            )}
-          </div>
-        </motion.div>
-      )}
-
-      {message && (
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -317,24 +242,91 @@ export function GameRoom() {
           transition={{ duration: 0.4, delay: 0.2 }}
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center z-10"
         >
-          <div className="bg-base-200 shadow-lg border border-base-300 p-6 rounded-2xl w-[320px] text-center relative shadow-warning/30">
+          <div className="bg-base-200 shadow-md border border-base-300 p-6 rounded-2xl w-[320px] text-center relative shadow-warning/30">
             <h3 className="text-lg font-semibold text-base-content mb-3">
-              Оповещение
+              💸 Оплата ренты
             </h3>
 
-            <p className="text-base text-base-content/80">{message}</p>
-          </div>
+            <p className="text-base text-base-content/80">
+              {isMyPayment ? (
+                <>
+                  Вы должны заплатить{" "}
+                  <span className="text-primary font-bold text-lg">
+                    {currentPayment.rent}$
+                  </span>
+                </>
+              ) : (
+                <>
+                  Игрок{" "}
+                  <span className="font-semibold text-base-content">
+                    {
+                      currentRoom.players.find(
+                        (p) => p.playerId === currentPayment.payerId
+                      )?.player.name
+                    }
+                  </span>{" "}
+                  должен заплатить{" "}
+                  <span className="text-primary font-bold text-lg">
+                    {currentPayment.rent}$
+                  </span>
+                </>
+              )}
+            </p>
 
-          <Button
-            variant="ghost"
-            size="small"
-            className="absolute top-2 right-2"
-            onClick={() => setMessage("")}
-          >
-            <X className="w-5 h-5" />
-          </Button>
+            <p className="text-sm text-base-content/70 mt-2">
+              Владелец:{" "}
+              <span className="font-medium text-base-content">
+                {currentRoom.players.find(
+                  (p) => p.playerId === currentPayment.ownerId
+                )?.player.name || "Неизвестный игрок"}
+              </span>
+            </p>
+
+            <p className="text-xs text-base-content/50 mt-2">
+              Клетка №{currentPayment.cellId}
+            </p>
+            {isMyPayment && (
+              <div className="mt-5 flex justify-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="medium"
+                  className="flex-1"
+                  onClick={() => setIsMortage(true)}
+                >
+                  Заложить
+                </Button>
+                <Button
+                  variant="default"
+                  size="medium"
+                  className="flex-1"
+                  onClick={() => payRent()}
+                >
+                  Оплатить
+                </Button>
+              </div>
+            )}
+          </div>
         </motion.div>
       )}
+      <AnimatePresence mode="wait">
+        {currentChance && (
+          <GameMessageEvent
+            title={`Шанс: ${
+              currentRoom.players.find(
+                (p) => p.playerId === currentChance.playerId
+              )?.player.name
+            }`}
+            description={currentChance.text}
+            isShowEvent={currentChance.playerId === currentUser.playerId}
+            onConfirm={confrimChance}
+            onClose={confrimChance}
+          />
+        )}
+
+        {!currentChance && message && !currentPayment && (
+          <GameMessage message={message} onClose={() => setMessage(null)} />
+        )}
+      </AnimatePresence>
 
       {/* Главное содержимое */}
       <div className="p-6 mx-auto">
@@ -351,6 +343,7 @@ export function GameRoom() {
               user={user}
               cellState={cellState}
               isCurrentTrunPlayerId={currentRoom.currentTurnPlayerId}
+              currentRoom={currentRoom}
             />
             {/* <ChatPanel /> */}
           </motion.div>
@@ -374,7 +367,7 @@ export function GameRoom() {
             />
           </motion.div>
 
-          {/* Right Column - Действия & Журнал */}
+          {/* Right column - Действия & Журнал */}
           <motion.div
             className="lg:col-span-1 space-y-6"
             initial={{ x: 20, opacity: 0 }}
@@ -382,6 +375,7 @@ export function GameRoom() {
             transition={{ duration: 0.4, delay: 0.1 }}
           >
             <ActionPanel
+              currentRoom={currentRoom}
               movePlayer={movePlayer}
               isCurrentTurn={currentRoom.currentTurnPlayerId === user?.id}
               isCurrentTrunUser={currentRoom.players.find(
@@ -392,20 +386,24 @@ export function GameRoom() {
               buyCell={handleBuyCell}
               isBuying={
                 cells.find((c) => c.id === currentUser?.positionOnBoard)
-                  ?.isBuying
+                  ?.isBuying &&
+                (cells.find((c) => c.id === currentUser?.positionOnBoard)
+                  ?.price || 10) <= currentUser?.money
               }
               cellState={cellState}
               isBlocked={currentPayment !== null}
+              isMortage={isMortage}
               handleMortgaged={handleMortgaged}
               handleJailAction={handleJailAction}
+              handleReady={handleIsReady}
             />
-            {/* <GameLog /> */}
+            <GameLog logs={logs} />
           </motion.div>
         </div>
       </div>
 
       {/* Модалки */}
-      <Dialog isOpen={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+      <Dialog isOpen={showLeaveDialog} onOpenChange={setShowLeaveDialog} isBlur>
         <div className="space-y-6 max-w-lg">
           <div className="space-y-3">
             <h2 className="text-xl font-bold">Покинуть комнату?</h2>
@@ -425,7 +423,7 @@ export function GameRoom() {
         </div>
       </Dialog>
 
-      <Dialog isOpen={showRulesDialog} onOpenChange={setShowRulesDialog}>
+      <Dialog isOpen={showRulesDialog} onOpenChange={setShowRulesDialog} isBlur>
         <div className="space-y-3 min-w-lg">
           <div className="space-y-2">
             <h2>Правила игры</h2>

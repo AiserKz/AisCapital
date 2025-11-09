@@ -101,7 +101,10 @@ export function GameBoard({
     const userCell = cellState?.filter(
       (c) => c.ownerId === currentUser?.playerId
     );
-    const isMortagedCell = isMortage && userCell?.find((c) => c.id === cell.id);
+    const isMortagedCell =
+      isMortage &&
+      userCell?.find((c) => c.id === cell.id) &&
+      !cellOwner?.mortgaged;
     const cellIsMortaged = cellOwner ? cellOwner.mortgaged : false;
 
     const spanClass = isCorner
@@ -189,7 +192,7 @@ export function GameBoard({
           className={`h-full w-full bg-base-300 hover:shadow-xl transition-all rounded-lg  flex ${
             isSide ? "flex-row" : "flex-col"
           } justify-between relative ${
-            isMortagedCell && "border border-warning"
+            isMortagedCell && "border border-warning scale-105"
           }
           ${cellIsMortaged ? "opacity-65" : ""}
           `}
@@ -221,11 +224,21 @@ export function GameBoard({
                 <div
                   className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-base-content/70 text-[0.7rem] font-medium mt-1 ${
                     isSide ? "self-center" : ""
-                  } ${cellOwner ? "bg-accent" : "bg-base-200"} `}
+                  } ${
+                    cellOwner
+                      ? isMortagedCell
+                        ? "bg-stone-800"
+                        : "bg-accent"
+                      : "bg-base-200"
+                  } `}
                 >
                   <DollarSign className="w-3 h-3 text-success shrink-0" />
                   <span className="truncate">
-                    {cellOwner ? cellOwner.currentRent : cell.price}
+                    {cellOwner
+                      ? isMortagedCell
+                        ? cell.price / 2
+                        : cellOwner.currentRent
+                      : cell.price}
                   </span>
                 </div>
               ) : (
@@ -327,7 +340,7 @@ export function GameBoard({
   return (
     <>
       <Card className="bg-linear-to-br from-base-200 to-base-200 p-4 shadow-lg">
-        <div className="grid grid-cols-13 grid-rows-11 gap-1 aspect-square w-full h-full overflow-hidden">
+        <div className="grid grid-cols-13 grid-rows-11 gap-1 aspect-square w-full h-full">
           {/* Top (0–11) включая углы */}
           <div className="col-start-1 col-span-13 row-start-1 row-span-2 grid grid-cols-13 gap-1">
             {cells.slice(0, 11).map((cell) => renderCell(cell, "top"))}
