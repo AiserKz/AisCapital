@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Settings, Info, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "../components/ui/button";
@@ -32,7 +32,6 @@ export function GameRoom() {
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRulesDialog, setShowRulesDialog] = useState<boolean>(false);
 
-  const [currentRound, setCurrentRound] = useState<number>(1);
   const [cellState, setCellState] = useState<CellState[]>([]);
 
   const [isMortage, setIsMortage] = useState<boolean>(false);
@@ -56,12 +55,10 @@ export function GameRoom() {
   const [currentPayment, setCurrentPayment] =
     useState<CurrentPaymentType | null>(null);
 
-  const handleRollDice = async (
-    dice1: number,
-    dice2: number,
-    playerId: string
-  ) => {
+  const handleRollDice = async (dice1: number, dice2: number) => {
+    console.log("Бросаем кости", dice1, dice2);
     setDice({ dice1, dice2 });
+    setIsMortage(false);
   };
 
   const onMessage = (message: {
@@ -85,14 +82,15 @@ export function GameRoom() {
   };
 
   const writeLogs = async (message: string, type: "CHANCE" | "EVENT") => {
-    let _logs = logs;
-    console.log("Записаваю логи");
-    if (_logs.length > 5) {
-      _logs = _logs.slice(0, 5);
-      console.log("обрезаю логи");
-    }
+    setLogs((prev) => {
+      let newLogs = [{ message, type }, ...prev];
 
-    setLogs([..._logs, { message, type }]);
+      if (newLogs.length > 20) {
+        newLogs = newLogs.slice(0, 20);
+      }
+
+      return newLogs;
+    });
   };
 
   const roomClosed = (message: string) => {
@@ -178,7 +176,15 @@ export function GameRoom() {
     setIsMortage(!isMortage);
   };
 
-  if (!currentRoom) return <div>Загрузка</div>;
+  if (!currentRoom)
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="flex justify-center items-center">
+          <p className="loading loading-lg text-info loading-infinity w-18 h-18"></p>
+          <p className="text-2xl animate-pulse">Загрузка...</p>
+        </div>
+      </div>
+    );
 
   const currentUser = currentRoom.players.find(
     (p) => p.player.id === user?.id
@@ -211,7 +217,7 @@ export function GameRoom() {
               <div>
                 <h2 className="text-base-content">Комната #{roomId}</h2>
                 <p className="text-xs text-base-content/60">
-                  Раунд {currentRound}
+                  Хост: {currentRoom.host.name}
                 </p>
               </div>
             </div>
@@ -325,6 +331,25 @@ export function GameRoom() {
 
         {!currentChance && message && !currentPayment && (
           <GameMessage message={message} onClose={() => setMessage(null)} />
+        )}
+
+        {currentRoom.winner && (
+          <GameMessage>
+            <div className="flex-col items-center justify-center space-y-3 min-w-lg">
+              <h3 className="text-xl">Игра завершена! Победил 🎆</h3>
+              <div className="flex space-x-2 items-center justify-center">
+                <img
+                  src={
+                    currentRoom.winner?.avatar ||
+                    "https://cdn.displate.com/artwork/270x380/2025-02-24/7f4304e7-bab6-4fe8-9ed9-b21790c11f5f.jpg"
+                  }
+                  alt={currentRoom.winner.name}
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+                <p className="text-lg">{currentRoom.winner.name}</p>
+              </div>
+            </div>
+          </GameMessage>
         )}
       </AnimatePresence>
 

@@ -5,6 +5,7 @@ import {
   findRoomAndPlayer,
   getCellState,
   getUserData,
+  roomUpdate,
   sendRoomMessage,
 } from "../../utils/roomUtils.js";
 import { CellState } from "../../../types/types.js";
@@ -38,6 +39,9 @@ export const handleBuyCell = async (io: Server, socket: Socket) => {
         return console.log(
           `❌ Клетка ${targetCell.name} уже принадлежит ${username}`
         );
+
+      if (player.jailed) return console.log(`⭕ Игрок ${username} в тюрьме!`);
+
       if (player.money < targetCell.price)
         return console.log(
           `❌ Игрок ${username} не имеет достаточно денег для покупки клетки ${targetCell.name}`
@@ -49,7 +53,7 @@ export const handleBuyCell = async (io: Server, socket: Socket) => {
         id: cellPos,
         ownerId: playerId,
         ownerPosition: player.position || 0,
-        currentRent: targetCell.price ? targetCell.price * 0.1 : 10,
+        currentRent: targetCell.rent,
         mortgaged: false,
         baseRent: targetCell.rent || 0,
         houses: 0,
@@ -71,7 +75,7 @@ export const handleBuyCell = async (io: Server, socket: Socket) => {
         `🏠 Игрок ${username} купил клетку ${targetCell.name}`,
         "EVENT"
       );
-      io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
+      roomUpdate(io, roomId, room);
     })
   );
 };

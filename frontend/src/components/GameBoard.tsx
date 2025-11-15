@@ -15,7 +15,7 @@ import { motion } from "framer-motion";
 import Card from "./ui/card";
 import Button from "./ui/button";
 import Dialog from "./ui/dialog";
-import type { Cell, CellState, PlayerInRoomType } from "../types/types";
+import type { Ceil, CellState, PlayerInRoomType } from "../types/types";
 import { cells } from "../test/data";
 
 interface GameBoardProps {
@@ -46,7 +46,7 @@ export function GameBoard({
   isCurrentTurn,
   handleBuyHouse,
 }: GameBoardProps) {
-  const [selectedCell, setSelectedCell] = useState<Cell | null>(null);
+  const [selectedCell, setSelectedCell] = useState<Ceil | null>(null);
 
   const getColorClass = (color: string) => {
     const colors: Record<string, string> = {
@@ -88,7 +88,7 @@ export function GameBoard({
     }
   };
 
-  const renderCell = (cell: Cell, position: string) => {
+  const renderCell = (cell: Ceil, position: string) => {
     const isCorner = cell.type.toUpperCase() === "CORNER";
     const isSide = position === "left" || position === "right";
     const playersOnCell = players.filter((p) => p.positionOnBoard === cell.id);
@@ -474,11 +474,11 @@ export function GameBoard({
                     ) {
                       const unmortgageCost =
                         selectedCell.price &&
-                        Math.floor((selectedCell.price / 2) * 1.1);
+                        Math.floor((selectedCell.price / 2) * 1.2);
                       return (
                         <div className="w-full items-center justify-center flex">
                           <Button
-                            disabled={!isCurrentTurn}
+                            disabled={!isCurrentTurn || currentUser?.jailed}
                             variant="success"
                             className="w-1/2"
                             size="medium"

@@ -1,6 +1,6 @@
 import Card from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Users, Home, DollarSign, Crown } from "lucide-react";
+import { Users, Home, DollarSign, Crown, Columns3 } from "lucide-react";
 import { motion } from "framer-motion";
 import type {
   CellState,
@@ -61,14 +61,14 @@ export function PlayerList({
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
               whileHover={{ scale: 1.02 }}
-              className={`p-3 rounded-lg border-2 transition-all ${
+              className={`p-3 rounded-lg border-2 transition-all relative ${
                 _player.player.id === isCurrentTrunPlayerId
                   ? "border-blue-500 bg-blue-500/10 shadow-md"
                   : "border-base-300 bg-base-200"
               }`}
             >
               <div
-                className={`flex items-start gap-3  ${
+                className={`flex items-start gap-3 ${
                   isDisconnected ? "opacity-50" : ""
                 }`}
               >
@@ -157,6 +157,11 @@ export function PlayerList({
                     </div>
                   )}
                 </div>
+                {_player.hasJailFreeCard && (
+                  <div className="w-8 h-12 rounded-md border border-amber-400 rotate-4 items-center justify-center flex">
+                    <Columns3 className="w-6 h-6 text-amber-400" />{" "}
+                  </div>
+                )}
               </div>
             </motion.div>
           );

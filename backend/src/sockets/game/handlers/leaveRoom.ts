@@ -7,7 +7,11 @@ import {
 } from "../../../services/gameService.js";
 import { safeSocket } from "../../utils/safeSocket.js";
 import { GAME_EVENTS } from "../events/gameEvents.js";
-import { getUserData } from "../../utils/roomUtils.js";
+import {
+  findRoomAndPlayer,
+  getUserData,
+  roomUpdate,
+} from "../../utils/roomUtils.js";
 
 export const handleLeaveRoom = async (io: Server, socket: Socket) => {
   socket.on(
@@ -19,27 +23,20 @@ export const handleLeaveRoom = async (io: Server, socket: Socket) => {
       console.log(`👤 Пользователь ${username} покинул комнату ${roomId}`);
       if (!roomId || !playerId) return;
 
-      const room = await getRoomById(roomId);
+      const { room, player } = await findRoomAndPlayer(roomId, playerId);
+
       if (!room) return;
 
       if (room.status === "WAITING") {
         await removePlayerFromRoom(roomId, playerId);
         io.to(roomId).emit(GAME_EVENTS.PLAYER_LEFT, playerId);
-        // if (room.hostId === playerId) {
-        //   io.to(roomId).emit(GAME_EVENTS.HOST_LEAVE, "Хост покинул комнату");
-        //   deleteRoom(roomId);
-        //   return;
-        // }
-
-        const updatedRoom = await getRoomById(roomId);
-        io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, updatedRoom);
+        await roomUpdate(io, roomId, room);
       } else if (room.status === "IN_PROGRESS" || room.status === "STARTING") {
-        const player = room.players.find((p) => p.playerId === playerId);
         if (player) {
           console.log(`👤 Пользователь ${username} покинул комнату ${roomId}`);
           player.disconnected = true;
           await saveRoomToDB(room);
-          io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
+          roomUpdate(io, roomId, room);
         }
       }
     })

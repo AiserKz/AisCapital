@@ -6,7 +6,11 @@ import {
 } from "../../../services/gameService.js";
 import { safeSocket } from "../../utils/safeSocket.js";
 import { GAME_EVENTS } from "../events/gameEvents.js";
-import { getUserData } from "../../utils/roomUtils.js";
+import {
+  findRoomAndPlayer,
+  getUserData,
+  roomUpdate,
+} from "../../utils/roomUtils.js";
 
 export const handleJoinRoom = async (io: Server, socket: Socket) => {
   socket.on(
@@ -17,14 +21,16 @@ export const handleJoinRoom = async (io: Server, socket: Socket) => {
 
       const room = await getRoomById(roomId);
 
-      const player = room?.players.find((p) => p.playerId === playerId);
+      if (!room) return console.log(`⭕ Комната ${roomId} не найдена`);
+      const player = room.players.find((p) => p.playerId === playerId);
+
       if (player) {
         console.log(
           `👤 Пользователь ${username} уже вошел в комнату ${room?.name}`
         );
         player.disconnected = false;
         await saveRoomToDB(room);
-        io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
+        await roomUpdate(io, roomId, room);
         return;
       }
 

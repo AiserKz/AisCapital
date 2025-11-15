@@ -24,9 +24,10 @@ model Player {
     updateAt          DateTime            @updatedAt
     lastSeen          DateTime?
     status            Int                 @default(1)
-    GameRoom          GameRoom[]
     PlayerInRoom      PlayerInRoom[]
     PlayerGameHistory PlayerGameHistory[]
+    hostedRooms       GameRoom[]          @relation("RoomHost")
+    wonRoom           GameRoom[]          @relation("RoomWinner")
 
     @@index([wins])
     @@index([elo])
@@ -41,10 +42,14 @@ model GameRoom {
     password  String?
 
     hostId String
-    host   Player @relation(fields: [hostId], references: [id], onDelete: Cascade)
+    host   Player @relation(fields: [hostId], references: [id], onDelete: Cascade, name: "RoomHost")
+
+    winnerId String?
+    winner   Player? @relation(fields: [winnerId], references: [id], name: "RoomWinner")
 
     players             PlayerInRoom[]
     currentTurnPlayerId String?
+    comboTurn           Int            @default(0)
 
     gameSetting    Json?
     cellState      Json?
@@ -77,6 +82,7 @@ model PlayerInRoom {
     bankrupt        Boolean @default(false) // банкрот ли
     skippedTurns    Int     @default(0)
     isFrozen        Boolean @default(false)
+    hasJailFreeCard Boolean @default(false)
 
     // Экономика
     money      Int   @default(1500) // стартовый капитал

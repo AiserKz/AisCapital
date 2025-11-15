@@ -1,8 +1,9 @@
 import { Server } from "socket.io";
 import { RoomWithPlayers } from "../../types/types.js";
-import { getCellState, sendRoomMessage } from "./roomUtils.js";
+import { getCellState, roomUpdate, sendRoomMessage } from "./roomUtils.js";
 import { GAME_EVENTS } from "../game/events/gameEvents.js";
 import { saveRoomToDB } from "../../services/gameService.js";
+import { prisma } from "../../prisma.js";
 
 export const checkBankruptcy = async (
   io: Server,
@@ -32,7 +33,8 @@ export const checkBankruptcy = async (
     });
 
     await saveRoomToDB(room);
-    io.to(room.id).emit(GAME_EVENTS.ROOM_UPDATE, room);
+    roomUpdate(io, room.id, room);
+
     return;
   }
 
@@ -66,8 +68,35 @@ export const checkBankruptcy = async (
       "EVENT"
     );
     room.status = "FINISHED";
+    room.winnerId = winner.playerId;
+
+    // Сохраняем историю и обновляем stats игроков
+    for (const p of room.players) {
+      const isWinner = p.playerId === winner.playerId;
+
+      await prisma.playerGameHistory.create({
+        data: {
+          playerId: p.playerId,
+          roomId: room.id,
+          finalMoney: p.money,
+          finalElo: p.player.level,
+          result: isWinner ? "win" : "lose",
+          joinedAt: p.joinedAt,
+          leftAt: new Date(),
+        },
+      });
+
+      await prisma.player.update({
+        where: { id: p.playerId },
+        data: {
+          totalGames: { increment: 1 },
+          wins: isWinner ? { increment: 1 } : undefined,
+          elo: isWinner ? { increment: 10 } : { decrement: 1 },
+        },
+      });
+    }
   }
 
   await saveRoomToDB(room);
-  io.to(room.id).emit(GAME_EVENTS.ROOM_UPDATE, room);
+  roomUpdate(io, room.id, room);
 };

@@ -2,7 +2,11 @@ import { Server, Socket } from "socket.io";
 import { saveRoomToDB } from "../../../services/gameService.js";
 import { safeSocket } from "../../utils/safeSocket.js";
 import { GAME_EVENTS } from "../events/gameEvents.js";
-import { findRoomAndPlayer, getUserData } from "../../utils/roomUtils.js";
+import {
+  findRoomAndPlayer,
+  getUserData,
+  roomUpdate,
+} from "../../utils/roomUtils.js";
 
 export const handleIsReady = async (io: Server, socket: Socket) => {
   socket.on(
@@ -27,7 +31,7 @@ export const handleIsReady = async (io: Server, socket: Socket) => {
       }
 
       await saveRoomToDB(room);
-      io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
+      roomUpdate(io, roomId, room);
     })
   );
 };

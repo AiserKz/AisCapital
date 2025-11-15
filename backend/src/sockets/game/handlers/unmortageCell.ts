@@ -6,6 +6,7 @@ import {
   findRoomAndPlayer,
   getCellState,
   getUserData,
+  roomUpdate,
   sendRoomMessage,
 } from "../../utils/roomUtils.js";
 import { cells } from "../../../data/ceil.js";
@@ -32,7 +33,7 @@ export const handleUnMortageCell = async (io: Server, socket: Socket) => {
         return console.log(`⭕ Сейчас не ваш ход`);
 
       const mortgageValue = Math.floor((origCell?.price || 0) / 2);
-      const unmortgageCost = Math.floor(mortgageValue * 1.1);
+      const unmortgageCost = Math.floor(mortgageValue * 1.2);
 
       if (player.money < unmortgageCost)
         return console.log(
@@ -55,7 +56,7 @@ export const handleUnMortageCell = async (io: Server, socket: Socket) => {
 
       room.cellState = cellState.map((c) => (c.id === cellId ? cell : c));
       await saveRoomToDB(room);
-      io.emit(GAME_EVENTS.ROOM_UPDATE, room);
+      roomUpdate(io, roomId, room);
     })
   );
 };

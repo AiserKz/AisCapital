@@ -4,6 +4,7 @@ import {
   findRoomAndPlayer,
   getCellState,
   getUserData,
+  roomUpdate,
   sendRoomMessage,
 } from "../../utils/roomUtils.js";
 import { nextTurn } from "../../utils/nextTurn.js";
@@ -15,7 +16,7 @@ import { Ceil } from "../../../types/types.js";
 export const handlePlayerMove = async (io: Server, socket: Socket) => {
   socket.on(
     GAME_EVENTS.PLAYER_MOVE,
-    safeSocket(async (data: any, callback: any) => {
+    safeSocket(async (data: any) => {
       const { roomId } = data;
       const dice1 = Math.floor(Math.random() * 6) + 1;
       const dice2 = Math.floor(Math.random() * 6) + 1;
@@ -24,7 +25,7 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
 
       const { room, player } = await findRoomAndPlayer(roomId, playerId);
 
-      if (room.status !== "IN_PROGRESS") {
+      if (room.status === "WAITING") {
         console.log(
           `🎲 Игра в комнате ${room.name} еще не началась или же уже окончена!`
         );
@@ -35,42 +36,55 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           "Игра в комнате еще не началась или же уже окончена!",
           "EVENT"
         );
-        return callback({ success: false, message: "Комната не в игре!" });
+        return;
       }
 
       if (room.currentPayment) {
-        return callback({
-          success: false,
-          message: "Нельзя перемещаться пока рента не оплачена",
-        });
+        console.log(`🎲 Нельзя перемещаться пока рента не оплачена`);
+        return;
+      }
+      if (room.status === "FINISHED") {
+        console.log(`🎲 Игра в комнате ${room.name} уже окончена!`);
+        return;
       }
 
       if (room.currentTurnPlayerId !== playerId) {
         console.log(`🎲 Сейчас не ваш ход!`);
-        return callback({ success: false, message: "Сейчас не ваш ход!" });
+        return;
       }
 
       if (player.jailed) {
         console.log(`🎲 Игрок ${playerId} в тюрьме!`);
-        return callback({ success: false, message: "Игрок в тюрьме!" });
+        return;
       }
 
       if (player.isFrozen) {
         console.log(`🎲 Игрок ${playerId} заморожен!`);
-        return callback({
-          success: false,
-          message:
-            "Вы не можете ходить, пока у вас долг! Заложите имущество или обанкротьтесь.",
-        });
+        return;
       }
 
       console.log(
         `🎲 Игрок ${username} бросил кубики: ${dice1} + ${dice2} = ${finalValue}`
       );
 
-      socket
-        .to(roomId)
-        .emit(GAME_EVENTS.PLAYER_HAS_MOVED, playerId, dice1, dice2);
+      if (room.comboTurn >= 3) {
+        room.comboTurn = 0;
+        player.jailed = true;
+        player.positionOnBoard = 10;
+        sendRoomMessage(
+          io,
+          roomId,
+          playerId,
+          `🚓🚓 Игрок ${username} получил трою дубль ${dice1} + ${dice2}, и попал в тюрьму`,
+          "EVENT"
+        );
+        await saveRoomToDB(room);
+
+        await roomUpdate(io, roomId, room);
+        return;
+      }
+
+      io.to(roomId).emit(GAME_EVENTS.PLAYER_HAS_MOVED, dice1, dice2);
 
       // новое положение  с учётом цикла на 40 клеток
       const totalCells = cells.length;
@@ -101,7 +115,9 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           "EVENT"
         );
         room.currentTurnPlayerId = await nextTurn(room, playerId);
+        room.comboTurn = 0;
       } else {
+        room.comboTurn += 1;
         sendRoomMessage(
           io,
           roomId,
@@ -114,7 +130,7 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
       const currentCell = cells.find((c) => c.id === newPosition);
       switch (currentCell?.type.toUpperCase() as Ceil["type"]) {
         case "TAX":
-          const taxAmount = Math.floor(player.money * 0.1) + 100;
+          const taxAmount = Math.floor(player.money * 0.1) + 50;
           player.money -= taxAmount;
           console.log(`💸 Игрок ${username} заплатил налог $${taxAmount}`);
           sendRoomMessage(
@@ -146,17 +162,32 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           });
           break;
         case "CORNER":
-          if (currentCell?.id === 10 || currentCell?.id === 30) {
-            player.jailed = true;
-            console.log(`🚓 Игрок ${username} попал в тюрьму`);
-            sendRoomMessage(
-              io,
-              roomId,
-              playerId,
-              `🚓 Игрок ${username} попал в тюрьму`,
-              "EVENT"
-            );
-            player.positionOnBoard = 10;
+          if (currentCell?.id === 30) {
+            if (player.hasJailFreeCard) {
+              player.hasJailFreeCard = false;
+
+              console.log(
+                `🚓 Игрок ${username} попал в тюрьму, но у него есть карты выпуска!`
+              );
+              sendRoomMessage(
+                io,
+                roomId,
+                playerId,
+                `🚓 Игрок ${username} попал в тюрьму, но у него есть карты выпуска!`,
+                "EVENT"
+              );
+            } else {
+              player.jailed = true;
+              player.positionOnBoard = 10;
+              console.log(`🚓 Игрок ${username} попал в тюрьму`);
+              sendRoomMessage(
+                io,
+                roomId,
+                playerId,
+                `🚓 Игрок ${username} попал в тюрьму`,
+                "EVENT"
+              );
+            }
           }
           break;
       }
@@ -188,16 +219,7 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
       }
       await saveRoomToDB(room);
 
-      io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
-
-      if (callback)
-        callback({
-          success: true,
-          value: finalValue,
-          position: newPosition,
-          dice1,
-          dice2,
-        });
+      roomUpdate(io, roomId, room);
     })
   );
 };

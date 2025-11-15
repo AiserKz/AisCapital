@@ -3,6 +3,7 @@ import {
   findRoomAndPlayer,
   getCurrentPayments,
   getUserData,
+  roomUpdate,
   sendRoomMessage,
 } from "../../utils/roomUtils.js";
 import { processRentPayment } from "../../../services/paymentService.js";
@@ -37,6 +38,10 @@ export const handlePayRent = async (io: Server, socket: Socket) => {
         return callback?.({ success: false, message: "Игрок не найден" });
       }
 
+      if (payer.money < rent) {
+        return callback?.({ success: false, message: "Недостаточно денег" });
+      }
+
       await processRentPayment(room, payer, owner, rent);
       await checkBankruptcy(io, room, payerId);
       if (payer.money >= 0 && payer.isFrozen) {
@@ -48,7 +53,7 @@ export const handlePayRent = async (io: Server, socket: Socket) => {
         });
       }
 
-      io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
+      roomUpdate(io, roomId, room);
       io.to(roomId).emit(GAME_EVENTS.PAYMENT_COMPLETE, {
         payerId,
         ownerId,

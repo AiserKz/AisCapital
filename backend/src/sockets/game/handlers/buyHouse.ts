@@ -10,6 +10,7 @@ import {
   calculateRent,
   findRoomAndPlayer,
   getCellState,
+  roomUpdate,
 } from "../../utils/roomUtils.js";
 
 export const handleBuyHouse = async (io: Server, socket: Socket) => {
@@ -61,7 +62,7 @@ export const handleBuyHouse = async (io: Server, socket: Socket) => {
         await saveRoomToDB(room);
         console.log("Пользователь покупает дом/отель", playerId, cellId, type);
 
-        io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
+        roomUpdate(io, roomId, room);
       }
     )
   );

@@ -7,10 +7,16 @@ import { ProfilePage } from "./pages/Profile";
 import SettingPage from "./pages/Setting";
 import { GameRoom } from "./pages/GameRoom";
 import AuthPage from "./pages/Auth";
+import { PrivateRoute } from "./layout/PrivateRoute";
+import { GuestRoute } from "./layout/GuestRoute";
 
 const router = createBrowserRouter([
   {
-    element: <AppLayout />,
+    element: (
+      <PrivateRoute>
+        <AppLayout />
+      </PrivateRoute>
+    ),
     children: [
       {
         path: "/",
@@ -36,7 +42,12 @@ const router = createBrowserRouter([
   },
   {
     path: "/login",
-    element: <AuthPage />,
+    element: (
+      <GuestRoute>
+        {" "}
+        <AuthPage />
+      </GuestRoute>
+    ),
   },
   {
     path: "*",

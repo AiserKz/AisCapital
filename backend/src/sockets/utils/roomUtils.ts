@@ -1,7 +1,12 @@
 import { Server, Socket } from "socket.io";
 import { getRoomById } from "../../services/gameService.js";
-import { CellState, CurrentPaymentType } from "../../types/types.js";
+import {
+  CellState,
+  CurrentPaymentType,
+  RoomWithPlayers,
+} from "../../types/types.js";
 import { GAME_EVENTS } from "../game/events/gameEvents.js";
+import { prisma } from "../../prisma.js";
 
 interface Room {
   id: string;
@@ -79,4 +84,31 @@ export const sendRoomMessage = (
     text: message,
     type: type,
   });
+};
+
+export const roomUpdate = async (
+  io: Server,
+  roomId: string,
+  data: RoomWithPlayers
+) => {
+  let winnerData = null;
+
+  if (data.winnerId && data.status === "FINISHED") {
+    winnerData = await prisma.player.findUnique({
+      where: { id: data.winnerId },
+      select: {
+        id: true,
+        name: true,
+        avatar: true,
+        level: true,
+      },
+    });
+  }
+
+  const room: any = {
+    ...data,
+    winner: winnerData,
+  };
+
+  io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
 };

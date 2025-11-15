@@ -24,7 +24,6 @@ export type Ceil = {
   rent?: number;
   color?: string;
   isBuying?: boolean;
-  owner?: string;
   housePrice?: number;
   hotelPrice?: number;
 };

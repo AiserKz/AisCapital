@@ -23,13 +23,12 @@ import type {
   PlayerInRoomType,
   RoomDetailType,
 } from "../types/types";
-import type { MoveResponse } from "../utils/hook/useGameSocket";
 import useCellActions from "../utils/hook/useCellActions";
 
 interface ActionPanelProps {
   currentRoom: RoomDetailType | null;
   currentUser?: PlayerInRoomType;
-  movePlayer: () => Promise<MoveResponse>;
+  movePlayer: () => void;
   isCurrentTurn: boolean;
   isCurrentTrunUser?: PlayerInRoomType;
   dice: { dice1: number; dice2: number };
@@ -84,15 +83,7 @@ export function ActionPanel({
 
   const handleRollDice = async () => {
     if (!isCurrentTurn || isRolling || isBlocked) return;
-
-    setIsRolling(true);
-    rollDiceAnimation(async () => {
-      const result = await movePlayer();
-
-      setDiceValue(result.dice1 + result.dice2);
-
-      setIsRolling(false);
-    });
+    movePlayer();
   };
 
   const rollDiceAnimation = (onFinish: () => void) => {
@@ -122,6 +113,7 @@ export function ActionPanel({
 
   useEffect(() => {
     if (!dice?.dice1 || !dice?.dice2) return;
+    console.log("Dice внутри ActionPanel Изменилься", dice.dice1, dice.dice2);
 
     setIsRolling(true);
 
@@ -130,19 +122,6 @@ export function ActionPanel({
       setIsRolling(false);
     });
   }, [dice.dice1, dice.dice2]);
-
-  useEffect(() => {
-    if (!isRolling) return;
-
-    const interval = setInterval(() => {
-      setDisplayDice({
-        dice1: Math.floor(Math.random() * 6) + 1,
-        dice2: Math.floor(Math.random() * 6) + 1,
-      });
-    }, 200);
-
-    return () => clearInterval(interval);
-  }, [isRolling]);
 
   const timeProgress = (timeLeft / 30) * 100;
   const DiceIcon1 =

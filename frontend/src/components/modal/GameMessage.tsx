@@ -1,13 +1,16 @@
 import { motion } from "framer-motion";
 import Button from "../ui/button";
 import { X } from "lucide-react";
+import type React from "react";
 
 export function GameMessage({
   message,
   onClose,
+  children,
 }: {
-  message: string;
-  onClose: () => void;
+  message?: string;
+  onClose?: () => void;
+  children?: React.ReactNode;
 }) {
   return (
     <motion.div
@@ -23,15 +26,18 @@ export function GameMessage({
         </h3>
 
         <p className="text-base text-base-content/80">{message}</p>
+        {children}
       </div>
-      <Button
-        variant="ghost"
-        size="small"
-        className="absolute top-2 right-2"
-        onClick={onClose}
-      >
-        <X className="w-5 h-5" />
-      </Button>
+      {onClose && (
+        <Button
+          variant="ghost"
+          size="small"
+          className="absolute top-2 right-2"
+          onClick={onClose}
+        >
+          <X className="w-5 h-5" />
+        </Button>
+      )}
     </motion.div>
   );
 }

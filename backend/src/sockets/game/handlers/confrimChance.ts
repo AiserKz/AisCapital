@@ -2,9 +2,10 @@ import { Server, Socket } from "socket.io";
 import { saveRoomToDB } from "../../../services/gameService.js";
 import { safeSocket } from "../../utils/safeSocket.js";
 import { GAME_EVENTS } from "../events/gameEvents.js";
-import { findRoomAndPlayer } from "../../utils/roomUtils.js";
+import { findRoomAndPlayer, roomUpdate } from "../../utils/roomUtils.js";
 import { PendingChanceType } from "../../../types/types.js";
 import { chanceCards } from "../../../data/ceil.js";
+import { checkBankruptcy } from "../../utils/econmy.js";
 
 export const handleConfrimChance = async (io: Server, socket: Socket) => {
   socket.on(
@@ -24,9 +25,10 @@ export const handleConfrimChance = async (io: Server, socket: Socket) => {
 
       card.effect(player);
       room.pendingChance = null;
+      if (player.money < 0) await checkBankruptcy(io, room, userid);
 
       await saveRoomToDB(room);
-      io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
+      roomUpdate(io, roomId, room);
       console.log(`✅ Игрок ${userid} подтвердил карточку "${card.text}"`);
     })
   );

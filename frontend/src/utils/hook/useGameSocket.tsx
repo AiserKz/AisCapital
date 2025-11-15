@@ -43,7 +43,7 @@ export type MoveResponse = {
 export default function useGameSocket(
   roomId: string | undefined,
   playerId: string | undefined,
-  handleRollDice: (dice1: number, dice2: number, playerId: string) => void,
+  handleRollDice: (dice1: number, dice2: number) => void,
   onRoomUpdate?: (
     updater: (prev: RoomDetailType | null) => RoomDetailType | null
   ) => void,
@@ -81,11 +81,12 @@ export default function useGameSocket(
 
     socket.on(GAME_EVENTS.ROOM_UPDATE, (room) => {
       console.log(GAME_EVENTS.ROOM_UPDATE, room);
-      onRoomUpdate?.((prev) => room);
+      onRoomUpdate?.((_prev) => room);
     });
 
-    socket.on(GAME_EVENTS.PLAYER_HAS_MOVED, (playerId, dice1, dice2) => {
-      handleRollDice(dice1, dice2, playerId);
+    socket.on(GAME_EVENTS.PLAYER_HAS_MOVED, (dice1, dice2) => {
+      handleRollDice(dice1, dice2);
+      console.log(GAME_EVENTS.PLAYER_HAS_MOVED, dice1, dice2);
     });
 
     socket.on(GAME_EVENTS.RENT_REQUIRED, (data) => {
@@ -119,19 +120,7 @@ export default function useGameSocket(
   }, [roomId]);
 
   const movePlayer = () => {
-    return new Promise<MoveResponse>((resolve, reject) => {
-      socket.emit(
-        GAME_EVENTS.PLAYER_MOVE,
-        { roomId },
-        (response: MoveResponse) => {
-          if (response.success) {
-            handleRollDice(response.dice1, response.dice2, playerId!);
-            resolve(response);
-          } else
-            reject(new Error("Ошибка при броске кубика " + response.message));
-        }
-      );
-    });
+    socket.emit(GAME_EVENTS.PLAYER_MOVE, { roomId });
   };
 
   const buyCell = () => {

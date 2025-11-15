@@ -70,6 +70,7 @@ interface PlayerInRoomType {
   jailed: boolean;
   jailTurns: number;
   isFrozen: boolean;
+  hasJailFreeCard: boolean;
 }
 
 interface PlayerLightType {
@@ -87,6 +88,8 @@ interface RoomDetailType extends RoomType {
   finishedAt: string;
   gameSettings: {};
   currentTurnPlayerId?: string;
+  winner?: PlayerLightType;
+  winnerId?: string;
 }
 
 interface CellState {
@@ -102,16 +105,17 @@ interface CellState {
   hotelPrice?: number;
 }
 
-interface Cell {
+type Ceil = {
   id: number;
   type: "PROPERTY" | "CORNER" | "CHANCE" | "TAX" | "RAILROAD" | "UTILITY";
   name: string;
   price?: number;
   rent?: number;
   color?: string;
-  owner?: string;
-  isBuying: boolean;
-}
+  isBuying?: boolean;
+  housePrice?: number;
+  hotelPrice?: number;
+};
 
 interface CurrentPaymentType {
   payerId: string;
@@ -135,7 +139,7 @@ export type {
   PlayerInRoomType,
   RoomDetailType,
   CellState,
-  Cell,
+  Ceil,
   CurrentPaymentType,
   PendingChanceType,
 };
