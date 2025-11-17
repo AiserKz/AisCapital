@@ -4,6 +4,7 @@ import {
   findRoomAndPlayer,
   getCellState,
   getUserData,
+  isBuyOrPayAction,
   roomUpdate,
   sendRoomMessage,
 } from "../../utils/roomUtils.js";
@@ -20,7 +21,7 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
       const { roomId } = data;
       const dice1 = Math.floor(Math.random() * 6) + 1;
       const dice2 = Math.floor(Math.random() * 6) + 1;
-      const finalValue = dice1 + dice2;
+      const totalMove = dice1 + dice2;
       const { playerId, username } = getUserData(socket);
 
       const { room, player } = await findRoomAndPlayer(roomId, playerId);
@@ -54,17 +55,24 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
       }
 
       if (player.jailed) {
-        console.log(`🎲 Игрок ${playerId} в тюрьме!`);
+        console.log(`🎲 Игрок ${username} в тюрьме!`);
         return;
       }
 
       if (player.isFrozen) {
-        console.log(`🎲 Игрок ${playerId} заморожен!`);
+        console.log(`🎲 Игрок ${username} заморожен!`);
+        return;
+      }
+
+      if (player.pendingAction && room.comboTurn === 0) {
+        console.log(
+          `Игрок ${username} должен завершить действие прежде чем бросать кубики`
+        );
         return;
       }
 
       console.log(
-        `🎲 Игрок ${username} бросил кубики: ${dice1} + ${dice2} = ${finalValue}`
+        `🎲 Игрок ${username} бросил кубики: ${dice1} + ${dice2} = ${totalMove}`
       );
 
       if (room.comboTurn >= 3) {
@@ -89,10 +97,10 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
       // новое положение  с учётом цикла на 40 клеток
       const totalCells = cells.length;
 
-      const newPosition = (player.positionOnBoard + finalValue) % totalCells;
+      const newPosition = (player.positionOnBoard + totalMove) % totalCells;
 
       // если пересекли старт бонус
-      if (player.positionOnBoard + finalValue >= totalCells) {
+      if (player.positionOnBoard + totalMove >= totalCells) {
         player.money += 200;
         console.log(`💰 Игрок ${username} прошёл через старт и получил $200`);
         sendRoomMessage(
@@ -111,10 +119,10 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           io,
           roomId,
           playerId,
-          `🎲 Игрок ${username} бросил кубики: \n ${dice1} + ${dice2} = ${finalValue}`,
+          `🎲 Игрок ${username} бросил кубики: \n ${dice1} + ${dice2} = ${totalMove}`,
           "EVENT"
         );
-        room.currentTurnPlayerId = await nextTurn(room, playerId);
+        // room.currentTurnPlayerId = await nextTurn(room, playerId);
         room.comboTurn = 0;
       } else {
         room.comboTurn += 1;
@@ -190,6 +198,39 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
             }
           }
           break;
+      }
+
+      if (currentCell && currentCell?.id !== 30) {
+        const TIMER = 30000;
+        console.log("Игрок попал на клетку запускаю таймер");
+        player.pendingAction = {
+          type: "BUY_OR_PAY",
+          cellId: currentCell.id,
+          expiresAt: Date.now() + TIMER,
+        };
+        io.to(roomId).emit(GAME_EVENTS.PENDING_ACTION, {
+          playerId,
+          action: player.pendingAction,
+        });
+
+        setTimeout(async () => {
+          // получаем актуальные данные игрока из комнаты на момент срабатывания таймера
+          const { room, player } = await findRoomAndPlayer(roomId, playerId);
+          if (isBuyOrPayAction(player.pendingAction)) {
+            console.log(`💸 У игрока ${username} закончилось время`);
+            player.pendingAction = null;
+
+            if (dice1 !== dice2) {
+              room.currentTurnPlayerId = await nextTurn(room, playerId);
+            }
+
+            io.to(roomId).emit(GAME_EVENTS.TURN_ENDED, { playerId });
+            await saveRoomToDB(room);
+            roomUpdate(io, roomId, room);
+          }
+        }, TIMER);
+      } else {
+        room.currentTurnPlayerId = await nextTurn(room, playerId);
       }
 
       const { cellState, cell } = getCellState(room, newPosition);

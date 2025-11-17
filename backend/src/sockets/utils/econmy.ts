@@ -1,9 +1,15 @@
 import { Server } from "socket.io";
-import { RoomWithPlayers } from "../../types/types.js";
-import { getCellState, roomUpdate, sendRoomMessage } from "./roomUtils.js";
+import { CellState, RoomWithPlayers } from "../../types/types.js";
+import {
+  findRoomAndPlayer,
+  getCellState,
+  roomUpdate,
+  sendRoomMessage,
+} from "./roomUtils.js";
 import { GAME_EVENTS } from "../game/events/gameEvents.js";
 import { saveRoomToDB } from "../../services/gameService.js";
 import { prisma } from "../../prisma.js";
+import { cells } from "../../data/ceil.js";
 
 export const checkBankruptcy = async (
   io: Server,
@@ -99,4 +105,65 @@ export const checkBankruptcy = async (
 
   await saveRoomToDB(room);
   roomUpdate(io, room.id, room);
+};
+
+export const buyCeil = async (io: Server, roomId: string, playerId: string) => {
+  const { room, player } = await findRoomAndPlayer(roomId, playerId);
+
+  const cellPos = player.positionOnBoard;
+  const targetCell = cells.find((c) => c.id === cellPos) || null;
+  if (
+    !targetCell ||
+    targetCell.isBuying === false ||
+    targetCell.price === undefined
+  )
+    return console.log(
+      `❌ Игрок ${player.player.name} не может купить клетку, ${targetCell?.name}`
+    );
+
+  const { cellState, cell } = getCellState(room, cellPos);
+
+  if (cell)
+    return console.log(
+      `❌ Клетка ${targetCell.name} уже принадлежит ${player.player.name}`
+    );
+
+  if (player.jailed)
+    return console.log(`⭕ Игрок ${player.player.name} в тюрьме!`);
+
+  if (player.money < targetCell.price)
+    return console.log(
+      `❌ Игрок ${player.player.name} не имеет достаточно денег для покупки клетки ${targetCell.name}`
+    );
+
+  player.money -= targetCell.price;
+
+  const newCellState: CellState = {
+    id: cellPos,
+    ownerId: playerId,
+    ownerPosition: player.position || 0,
+    currentRent: targetCell.rent,
+    mortgaged: false,
+    baseRent: targetCell.rent || 0,
+    houses: 0,
+    hotels: 0,
+    housePrice: targetCell.housePrice || 50,
+    hotelPrice: targetCell.hotelPrice || 150,
+  };
+
+  cellState.push(newCellState);
+
+  room.cellState = cellState;
+
+  // Сохраняем и уведомляем всех
+  await saveRoomToDB(room);
+  console.log(`🏠 Игрок ${player.player.name} купил клетку ${targetCell.name}`);
+  sendRoomMessage(
+    io,
+    roomId,
+    playerId,
+    `🏠 Игрок ${player.player.name} купил клетку ${targetCell.name}`,
+    "EVENT"
+  );
+  roomUpdate(io, roomId, room);
 };

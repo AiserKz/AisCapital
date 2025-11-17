@@ -2,31 +2,15 @@ import Card from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Users, Home, DollarSign, Crown, Columns3 } from "lucide-react";
 import { motion } from "framer-motion";
-import type {
-  CellState,
-  PlayerInRoomType,
-  RoomDetailType,
-  UserType,
-} from "../types/types";
+import type { RoomStateType } from "../types/types";
+import { useApp } from "../context/AppContext";
 
 interface PlayerListProps {
-  players: PlayerInRoomType[];
-  user: UserType | null;
-  isCurrentTrunPlayerId?: string;
-  cellState?: CellState[];
-  currentRoom?: RoomDetailType;
+  roomState: RoomStateType;
 }
 
-export function PlayerList({
-  players,
-  user,
-  isCurrentTrunPlayerId,
-  cellState,
-  currentRoom,
-}: PlayerListProps) {
-  const richPlayers = players.reduce((prev, curr) => {
-    return curr.money > prev.money ? curr : prev;
-  }, players[0]);
+export function PlayerList({ roomState }: PlayerListProps) {
+  const { user } = useApp();
 
   const getColorClass = (position: number) => {
     const colors: Record<string, string> = {
@@ -38,6 +22,13 @@ export function PlayerList({
     return colors[position] || "from-slate-500 to-slate-600";
   };
 
+  const currentRoom = roomState.currentRoom;
+  const cellState = roomState.cellState;
+  const players = roomState.currentRoom?.players ?? [];
+  const richPlayers = players.reduce((prev, curr) => {
+    return curr.money > prev.money ? curr : prev;
+  }, players[0]);
+  const isCurrentTrunPlayerId = roomState.currentRoom?.currentTurnPlayerId;
   return (
     <Card className="shadow-sm p-6">
       <div>

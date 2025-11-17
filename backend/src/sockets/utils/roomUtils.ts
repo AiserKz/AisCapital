@@ -3,6 +3,7 @@ import { getRoomById } from "../../services/gameService.js";
 import {
   CellState,
   CurrentPaymentType,
+  PendingAction,
   RoomWithPlayers,
 } from "../../types/types.js";
 import { GAME_EVENTS } from "../game/events/gameEvents.js";
@@ -18,9 +19,17 @@ export const findRoomAndPlayer = async (roomId: string, playerId: string) => {
   const room = await getRoomById(roomId);
   if (!room) throw new Error("Комната не найдена");
 
+  const player = await findPlayerInRoom(room, playerId);
+  return { room, player };
+};
+
+export const findPlayerInRoom = async (
+  room: RoomWithPlayers,
+  playerId: string
+) => {
   const player = room.players.find((p) => p.playerId === playerId);
   if (!player) throw new Error("Игрок не найден в комнате");
-  return { room, player };
+  return player;
 };
 
 export const getCurrentPayments = async (room: any, callback: any) => {
@@ -111,4 +120,10 @@ export const roomUpdate = async (
   };
 
   io.to(roomId).emit(GAME_EVENTS.ROOM_UPDATE, room);
+};
+
+export const isBuyOrPayAction = (obj: any): obj is PendingAction => {
+  return (
+    obj && typeof obj === "object" && "type" in obj && obj.type === "BUY_OR_PAY"
+  );
 };

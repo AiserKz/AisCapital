@@ -10,6 +10,7 @@ import {
   calculateRent,
   findRoomAndPlayer,
   getCellState,
+  getUserData,
   roomUpdate,
 } from "../../utils/roomUtils.js";
 
@@ -23,7 +24,7 @@ export const handleBuyHouse = async (io: Server, socket: Socket) => {
         type: "house" | "hotel";
       }) => {
         const { roomId, cellId, type } = data;
-        const playerId = socket.data?.user?.id;
+        const { playerId } = getUserData(socket);
 
         const { room, player } = await findRoomAndPlayer(roomId, playerId);
         const { cellState, cell } = await getCellState(room, cellId);

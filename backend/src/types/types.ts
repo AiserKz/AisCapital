@@ -62,6 +62,12 @@ export interface PendingChanceType {
   text?: string;
 }
 
+export type PendingAction = {
+  type: "BUY_OR_PAY" | "BUY_OR_SKIP";
+  cellId?: string;
+  expiresAt?: number;
+};
+
 export type RoomWithPlayers = Prisma.GameRoomGetPayload<{
   include: {
     players: {

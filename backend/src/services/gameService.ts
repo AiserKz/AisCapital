@@ -299,6 +299,10 @@ export const saveRoomToDB = async (room: any) => {
       currentPayment: room.currentPayment,
       pendingChance: room.pendingChance,
       winnerId: room.winnerId,
+      comboTurn: room.comboTurn,
+      winner: room.winner,
+      startedAt: room.startedAt,
+      finishedAt: room.finishedAt,
       players: {
         updateMany: room.players.map((p: any) => ({
           where: { playerId: p.playerId },
@@ -312,6 +316,7 @@ export const saveRoomToDB = async (room: any) => {
             jailTurns: p.jailTurns,
             isFrozen: p.isFrozen,
             isReady: p.isReady,
+            pendingAction: p.pendingAction,
           },
         })),
       },

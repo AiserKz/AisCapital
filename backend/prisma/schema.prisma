@@ -89,9 +89,10 @@ model PlayerInRoom {
     properties Json? // список купленных участков / карточек
 
     // Метаданные
-    lastAction   DateTime? // таймер хода для 
-    bot          Boolean   @default(false)
-    disconnected Boolean   @default(false)
+    lastAction    DateTime? // таймер хода для 
+    pendingAction Json?
+    bot           Boolean   @default(false)
+    disconnected  Boolean   @default(false)
 
     player Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
     room   GameRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)

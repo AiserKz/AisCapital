@@ -17,58 +17,58 @@ import { motion } from "framer-motion";
 import Button from "./ui/button";
 import Card from "./ui/card";
 import { ProgressBar } from "./ui/progress";
-import { toast } from "sonner";
-import type {
-  CellState,
-  PlayerInRoomType,
-  RoomDetailType,
-} from "../types/types";
+import type { PlayerInRoomType, RoomStateType } from "../types/types";
 import useCellActions from "../utils/hook/useCellActions";
 
 interface ActionPanelProps {
-  currentRoom: RoomDetailType | null;
+  roomState: RoomStateType;
   currentUser?: PlayerInRoomType;
   movePlayer: () => void;
-  isCurrentTurn: boolean;
-  isCurrentTrunUser?: PlayerInRoomType;
   dice: { dice1: number; dice2: number };
   buyCell: () => void;
+  skipTurn: () => void;
   isBuying?: boolean;
-  cellState: CellState[];
   isBlocked?: boolean;
   isMortage?: boolean;
   handleMortgaged: () => void;
   handleJailAction: (action: "roll" | "pay" | "wait") => void;
   handleReady: () => void;
+  timer: number;
 }
 
 export function ActionPanel({
-  currentRoom,
+  roomState,
   currentUser,
   movePlayer,
-  isCurrentTurn,
-  isCurrentTrunUser,
   dice,
   buyCell,
+  skipTurn,
   isBuying,
-  cellState,
   isBlocked,
   isMortage,
   handleMortgaged,
   handleJailAction,
   handleReady,
+  timer,
 }: ActionPanelProps) {
   if (!currentUser) return null;
   const [diceValue, setDiceValue] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState<boolean>(false);
-  const [timeLeft, setTimeLeft] = useState<number>(30);
 
-  const [displayDice, setDisplayDice] = useState<{
+  const currentRoom = roomState.currentRoom;
+  const cellState = roomState.cellState;
+  const isCurrentTurn =
+    currentRoom?.currentTurnPlayerId === currentUser.playerId;
+  const isCurrentTrunUser = currentRoom?.players.find(
+    (p) => p.playerId == currentRoom.currentTurnPlayerId
+  );
+
+  const [displayDice] = useState<{
     dice1: number;
     dice2: number;
   }>({ dice1: 0, dice2: 0 });
 
-  const { canBuy, canPayRent, isOwnerByPlayer } = useCellActions(
+  const { canBuy, isOwnerByPlayer } = useCellActions(
     cellState,
     currentUser,
     isCurrentTurn,
@@ -106,14 +106,11 @@ export function ActionPanel({
 
   const handleEndTurn = () => {
     if (!isCurrentTurn) return;
-    toast.info("Ход завершён");
-
-    setDiceValue(null);
+    skipTurn();
   };
 
   useEffect(() => {
     if (!dice?.dice1 || !dice?.dice2) return;
-    console.log("Dice внутри ActionPanel Изменилься", dice.dice1, dice.dice2);
 
     setIsRolling(true);
 
@@ -123,7 +120,7 @@ export function ActionPanel({
     });
   }, [dice.dice1, dice.dice2]);
 
-  const timeProgress = (timeLeft / 30) * 100;
+  const timeProgress = (timer / 30) * 100;
   const DiceIcon1 =
     getDiceIcon(isRolling ? displayDice.dice1 : dice.dice1) || null;
   const DiceIcon2 =
@@ -135,6 +132,7 @@ export function ActionPanel({
     if (canBuy) {
       return (
         <Button
+          disabled={PendingBlocked}
           variant="secondary"
           className="w-full gap-2 justify-start"
           onClick={handleBuyProperty}
@@ -157,6 +155,14 @@ export function ActionPanel({
     }
   };
 
+  const TurnBlocked =
+    !isCurrentTurn ||
+    isBlocked ||
+    currentUser.isFrozen ||
+    (currentRoom!.comboTurn === 0 && currentUser.pendingAction !== null);
+
+  const PendingBlocked = currentUser.pendingAction === null;
+
   return (
     <Card className="shadow-sm p-6">
       <div>
@@ -168,7 +174,7 @@ export function ActionPanel({
           </span>
           <div className="flex items-center gap-2 text-sm text-base-content/60">
             <Clock className="w-4 h-4" />
-            <span>{timeLeft}с</span>
+            <span>{timer}с</span>
           </div>
         </div>
         <ProgressBar value={timeProgress} className="h-1" />
@@ -240,7 +246,7 @@ export function ActionPanel({
         <div className="space-y-2">
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
-              disabled={!isCurrentTurn || isBlocked || currentUser.isFrozen}
+              disabled={TurnBlocked}
               variant="secondary"
               className="w-full gap-2 justify-start"
               onClick={
@@ -309,7 +315,12 @@ export function ActionPanel({
               </Button>
             ) : (
               <Button
-                disabled={!isCurrentTurn || isBlocked || currentUser.isFrozen}
+                disabled={
+                  !isCurrentTurn ||
+                  isBlocked ||
+                  currentUser.isFrozen ||
+                  currentUser.pendingAction === null
+                }
                 variant="secondary"
                 className="w-full gap-2 justify-start"
                 onClick={handleEndTurn}

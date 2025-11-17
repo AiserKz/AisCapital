@@ -19,6 +19,9 @@ export const GAME_EVENTS = {
   GAME_OVER: "game_over",
   IS_READY: "is_ready",
   HOST_LEAVE: "host_leave",
+  PENDING_ACTION: "pending_action",
+  TURN_ENDED: "turn_ended",
+  ROOM_MESSAGE: "room_message",
 } as const;
 
 export type GameEventKeys = keyof typeof GAME_EVENTS;

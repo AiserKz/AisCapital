@@ -2,6 +2,7 @@ import { io } from "socket.io-client";
 import { API_BASE_URL } from "../../config";
 import { useEffect, useRef } from "react";
 import type { CurrentPaymentType, RoomDetailType } from "../../types/types";
+import type { RoomAction } from "../../pages/GameRoom";
 
 const socket = io(API_BASE_URL, {
   auth: {
@@ -13,7 +14,6 @@ const GAME_EVENTS = {
   LEAVE_ROOM: "leave_room",
   PLAYER_MOVE: "player_move",
   PAY_RENT: "pay_rent",
-  BUY_CELL: "buy_cell",
   MORTAGE_CELL: "mortage_cell",
   UN_MORTAGE_CELL: "un-mortage_cell",
   ROOM_UPDATE: "room_updated",
@@ -29,27 +29,26 @@ const GAME_EVENTS = {
   GAME_OVER: "game_over",
   IS_READY: "is_ready",
   HOST_LEAVE: "host_leave",
+  PENDING_ACTION: "pending_action",
+  TURN_ENDED: "turn_ended",
+  ROOM_MESSAGE: "room_message",
 } as const;
-
-export type MoveResponse = {
-  success: boolean;
-  value: number;
-  position: number;
-  dice1: number;
-  dice2: number;
-  message?: string;
-};
 
 export default function useGameSocket(
   roomId: string | undefined,
   playerId: string | undefined,
   handleRollDice: (dice1: number, dice2: number) => void,
-  onRoomUpdate?: (
-    updater: (prev: RoomDetailType | null) => RoomDetailType | null
-  ) => void,
-  setCurrentPayment?: (payment: CurrentPaymentType) => void,
+  dispatch: React.Dispatch<RoomAction>,
+
   onMessage?: (message: any) => void,
-  roomClosed?: (message: string) => void
+  roomClosed?: (message: string) => void,
+  startTimer?: (time: number) => void,
+  chatMessage?: (data: {
+    playerId: string;
+    text: string;
+    username: string;
+    time: number;
+  }) => void
 ) {
   const hasJoinedRef = useRef(false);
   useEffect(() => {
@@ -59,29 +58,13 @@ export default function useGameSocket(
     console.log("Подключение к комнате");
     socket.emit(GAME_EVENTS.JOIN_ROOM, roomId);
 
-    socket.on(GAME_EVENTS.PLAYER_JOINED, (playerInRoom) => {
-      onRoomUpdate?.((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          players: [...prev.players, playerInRoom],
-        };
-      });
-    });
+    socket.on(GAME_EVENTS.PLAYER_JOINED, (playerInRoom) => {});
 
-    socket.on(GAME_EVENTS.PLAYER_LEFT, (playerId) => {
-      onRoomUpdate?.((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          players: prev.players.filter((p) => p.playerId !== playerId),
-        };
-      });
-    });
+    socket.on(GAME_EVENTS.PLAYER_LEFT, (playerId) => {});
 
     socket.on(GAME_EVENTS.ROOM_UPDATE, (room) => {
       console.log(GAME_EVENTS.ROOM_UPDATE, room);
-      onRoomUpdate?.((_prev) => room);
+      dispatch({ type: "SET_ROOM", payload: room });
     });
 
     socket.on(GAME_EVENTS.PLAYER_HAS_MOVED, (dice1, dice2) => {
@@ -90,18 +73,31 @@ export default function useGameSocket(
     });
 
     socket.on(GAME_EVENTS.RENT_REQUIRED, (data) => {
-      console.log(GAME_EVENTS.RENT_REQUIRED, data);
-      setCurrentPayment?.(data.text);
+      dispatch({ type: "SET_CURRENT_PAYMENT", payload: data.text });
     });
 
     socket.on(GAME_EVENTS.MESSAGE, (message) => {
-      console.log(GAME_EVENTS.MESSAGE, message);
       onMessage?.(message);
     });
 
     socket.on(GAME_EVENTS.HOST_LEAVE, (message) => {
       console.log(GAME_EVENTS.HOST_LEAVE, message);
       roomClosed?.(message);
+    });
+
+    socket.on(GAME_EVENTS.TURN_ENDED, () => {
+      startTimer?.(0);
+    });
+
+    socket.on(GAME_EVENTS.PENDING_ACTION, ({ playerId, action }) => {
+      if (action.type === "BUY_OR_PAY" && playerId) {
+        startTimer?.(action.expiresAt);
+      }
+    });
+
+    socket.on(GAME_EVENTS.ROOM_MESSAGE, (message) => {
+      console.log(GAME_EVENTS.ROOM_MESSAGE, message);
+      chatMessage?.(message);
     });
 
     return () => {
@@ -124,7 +120,21 @@ export default function useGameSocket(
   };
 
   const buyCell = () => {
-    socket.emit(GAME_EVENTS.BUY_CELL, { roomId });
+    socket.emit(GAME_EVENTS.PENDING_ACTION, {
+      roomId,
+      playerId,
+      action: "BUY_OR_SKIP",
+      buy: true,
+    });
+  };
+
+  const skipTurn = () => {
+    socket.emit(GAME_EVENTS.PENDING_ACTION, {
+      roomId,
+      playerId,
+      action: "BUY_OR_SKIP",
+      buy: false,
+    });
   };
 
   const payRent = () => {
@@ -155,6 +165,10 @@ export default function useGameSocket(
     socket.emit(GAME_EVENTS.IS_READY, roomId);
   };
 
+  const sendMessage = (text: string) => {
+    socket.emit(GAME_EVENTS.ROOM_MESSAGE, { roomId, text });
+  };
+
   return {
     movePlayer,
     buyCell,
@@ -165,5 +179,7 @@ export default function useGameSocket(
     handleJailAction,
     handleBuyHouse,
     handleIsReady,
+    skipTurn,
+    sendMessage,
   };
 }

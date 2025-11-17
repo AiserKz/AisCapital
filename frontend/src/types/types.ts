@@ -71,6 +71,11 @@ interface PlayerInRoomType {
   jailTurns: number;
   isFrozen: boolean;
   hasJailFreeCard: boolean;
+  pendingAction?: {
+    type: "BUY_OR_PAY" | "BUY_OR_SKIP";
+    cellId: string;
+    expiresAt: Date;
+  };
 }
 
 interface PlayerLightType {
@@ -90,6 +95,7 @@ interface RoomDetailType extends RoomType {
   currentTurnPlayerId?: string;
   winner?: PlayerLightType;
   winnerId?: string;
+  comboTurn: number;
 }
 
 interface CellState {
@@ -131,6 +137,13 @@ interface PendingChanceType {
   text?: string;
 }
 
+interface RoomStateType {
+  currentRoom: RoomDetailType | null;
+  cellState: CellState[];
+  currentPayment: CurrentPaymentType | null;
+  pendingChance: PendingChanceType | null;
+}
+
 export type {
   AppContextType,
   UserType,
@@ -142,4 +155,5 @@ export type {
   Ceil,
   CurrentPaymentType,
   PendingChanceType,
+  RoomStateType,
 };

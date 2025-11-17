@@ -15,17 +15,23 @@ import { motion } from "framer-motion";
 import Card from "./ui/card";
 import Button from "./ui/button";
 import Dialog from "./ui/dialog";
-import type { Ceil, CellState, PlayerInRoomType } from "../types/types";
+import type {
+  Ceil,
+  CellState,
+  PlayerInRoomType,
+  RoomStateType,
+} from "../types/types";
 import { cells } from "../test/data";
+import { useApp } from "../context/AppContext";
 
 interface GameBoardProps {
-  players: PlayerInRoomType[];
-  cellState: CellState[];
+  roomState: RoomStateType;
+
   isMortage: boolean;
   handleMortage: (cellId: number) => void;
   handleUnMortage: (cellId: number) => void;
   currentUser: PlayerInRoomType | null;
-  isCurrentTurn: boolean;
+
   handleBuyHouse: (cellId: number, type: "house" | "hotel") => void;
 }
 
@@ -37,16 +43,20 @@ const userColor = {
 };
 
 export function GameBoard({
-  players,
-  cellState,
+  roomState,
   isMortage,
   handleMortage,
   handleUnMortage,
   currentUser,
-  isCurrentTurn,
+
   handleBuyHouse,
 }: GameBoardProps) {
+  const { user } = useApp();
   const [selectedCell, setSelectedCell] = useState<Ceil | null>(null);
+
+  const players = roomState.currentRoom?.players ?? [];
+  const cellState = roomState.currentRoom?.cellState ?? [];
+  const isCurrentTurn = roomState.currentRoom?.currentTurnPlayerId === user?.id;
 
   const getColorClass = (color: string) => {
     const colors: Record<string, string> = {
