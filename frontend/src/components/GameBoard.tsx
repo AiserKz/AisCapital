@@ -310,6 +310,17 @@ export function GameBoard({
       cellState.find((c) => c.id === cell.id)?.ownerId !== currentUser?.playerId
     )
       return null;
+
+    const isBlockedBuyHouse =
+      cell.houses === 4 ||
+      !isCurrentTurn ||
+      cell?.housePrice! > currentUser?.money!;
+    const isBlockedBuyHotel =
+      cell.hotels === 3 ||
+      !isCurrentTurn ||
+      cell.houses < 4 ||
+      cell?.hotelPrice! > currentUser?.money!;
+
     return (
       <div className="py-2 space-y-2">
         <h3 className="text-base-content font-semibold">Дома и отели</h3>
@@ -321,7 +332,7 @@ export function GameBoard({
             variant="default"
             size="small"
             className="btn-soft"
-            disabled={cell.houses === 4 || !isCurrentTurn}
+            disabled={isBlockedBuyHouse}
             onClick={() => handleBuyHouse(cell.id, "house")}
           >
             <PlusSquareIcon className="w-8 h-8" />
@@ -336,7 +347,7 @@ export function GameBoard({
             variant="default"
             size="small"
             className=" btn-soft"
-            disabled={cell.hotels === 3 || !isCurrentTurn || cell.houses < 4}
+            disabled={isBlockedBuyHotel}
             onClick={() => handleBuyHouse(cell.id, "hotel")}
           >
             <PlusSquareIcon className="w-8 h-8" />
@@ -485,10 +496,17 @@ export function GameBoard({
                       const unmortgageCost =
                         selectedCell.price &&
                         Math.floor((selectedCell.price / 2) * 1.2);
+
+                      const moneyHave =
+                        !!unmortgageCost &&
+                        !!currentUser &&
+                        unmortgageCost > currentUser.money;
                       return (
                         <div className="w-full items-center justify-center flex">
                           <Button
-                            disabled={!isCurrentTurn || currentUser?.jailed}
+                            disabled={
+                              !isCurrentTurn || currentUser?.jailed || moneyHave
+                            }
                             variant="success"
                             className="w-1/2"
                             size="medium"

@@ -13,7 +13,7 @@ export const registerSocketHandler = (io: Server) => {
       next();
     } catch (err) {
       console.error("Ошибка аутентификации:", err);
-      next(new Error("Unauthorized"));
+      return next(new Error("Unauthorized"));
     }
   });
   io.on("connection", (socket) => {

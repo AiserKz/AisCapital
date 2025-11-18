@@ -317,6 +317,7 @@ export const saveRoomToDB = async (room: any) => {
             isFrozen: p.isFrozen,
             isReady: p.isReady,
             pendingAction: p.pendingAction,
+            skipRentTurns: p.skipRentTurns,
           },
         })),
       },

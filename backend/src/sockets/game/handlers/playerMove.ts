@@ -13,6 +13,9 @@ import { safeSocket } from "../../utils/safeSocket.js";
 import { GAME_EVENTS } from "../events/gameEvents.js";
 import { cells, chanceCards } from "../../../data/ceil.js";
 import { Ceil } from "../../../types/types.js";
+import { checkBankruptcy } from "../../utils/econmy.js";
+
+const timers: Record<string, NodeJS.Timeout> = {};
 
 export const handlePlayerMove = async (io: Server, socket: Socket) => {
   socket.on(
@@ -83,9 +86,10 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           io,
           roomId,
           playerId,
-          `🚓🚓 Игрок ${username} получил трою дубль ${dice1} + ${dice2}, и попал в тюрьму`,
+          `🚓 Игрок ${username} получил тройной дубль ${dice1} + ${dice2}, и попал в тюрьму`,
           "EVENT"
         );
+        room.currentTurnPlayerId = await nextTurn(room, playerId);
         await saveRoomToDB(room);
 
         await roomUpdate(io, roomId, room);
@@ -201,6 +205,12 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
       }
 
       if (currentCell && currentCell?.id !== 30) {
+        const timerKey = `${roomId}-${playerId}`;
+        if (timers[timerKey]) {
+          clearTimeout(timers[timerKey]);
+          delete timers[timerKey];
+        }
+
         const TIMER = 30000;
         console.log("Игрок попал на клетку запускаю таймер");
         player.pendingAction = {
@@ -213,14 +223,14 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           action: player.pendingAction,
         });
 
-        setTimeout(async () => {
+        timers[timerKey] = setTimeout(async () => {
           // получаем актуальные данные игрока из комнаты на момент срабатывания таймера
           const { room, player } = await findRoomAndPlayer(roomId, playerId);
           if (isBuyOrPayAction(player.pendingAction)) {
             console.log(`💸 У игрока ${username} закончилось время`);
             player.pendingAction = null;
 
-            if (dice1 !== dice2) {
+            if (dice1 !== dice2 && !player.isFrozen) {
               room.currentTurnPlayerId = await nextTurn(room, playerId);
             }
 
@@ -228,6 +238,7 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
             await saveRoomToDB(room);
             roomUpdate(io, roomId, room);
           }
+          delete timers[timerKey];
         }, TIMER);
       } else {
         room.currentTurnPlayerId = await nextTurn(room, playerId);
@@ -241,6 +252,23 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
         cell.ownerId !== playerId &&
         !cell.mortgaged
       ) {
+        if (player.skipRentTurns && player.skipRentTurns > 0) {
+          player.skipRentTurns -= 1;
+          console.log(
+            `💤 Игрок ${player.player.name} пропускает оплату ренты, осталось ${player.skipRentTurns} ходов`
+          );
+          sendRoomMessage(
+            io,
+            roomId,
+            playerId,
+            `💤 Игрок ${player.player.name} пропускает оплату ренты, осталось ${player.skipRentTurns} ходов`,
+            "EVENT"
+          );
+          await saveRoomToDB(room);
+          roomUpdate(io, roomId, room);
+          return;
+        }
+
         const rent = cell.currentRent || 0;
         const owner = room.players.find((p) => p.playerId === cell.ownerId);
 
@@ -248,14 +276,28 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           console.log(
             `💸 Игрок ${player.player.name} должен заплатить ${rent}$ игроку ${owner.playerId}`
           );
-          const payment = {
-            payerId: player.playerId,
-            ownerId: owner.playerId,
-            cellId: cell.id,
-            rent,
-          };
-          room.currentPayment = payment;
-          io.to(roomId).emit(GAME_EVENTS.RENT_REQUIRED, payment);
+          if (player.money < rent) {
+            console.log(
+              `❌ Игрок ${player.player.name} не имеет достаточно денег для оплаты ренты`
+            );
+            await checkBankruptcy(io, room, playerId, rent);
+            sendRoomMessage(
+              io,
+              roomId,
+              playerId,
+              `❌ Игрок ${player.player.name} не имеет достаточно денег для оплаты ренты`,
+              "EVENT"
+            );
+          } else {
+            const payment = {
+              payerId: player.playerId,
+              ownerId: owner.playerId,
+              cellId: cell.id,
+              rent,
+            };
+            room.currentPayment = payment;
+            io.to(roomId).emit(GAME_EVENTS.RENT_REQUIRED, payment);
+          }
         }
       }
       await saveRoomToDB(room);

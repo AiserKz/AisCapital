@@ -23,9 +23,9 @@ export const handleConfrimChance = async (io: Server, socket: Socket) => {
       const card = chanceCards.find((c) => c.id === pending.cardId);
       if (!card) return;
 
-      card.effect(player);
+      card.effect(player, room);
       room.pendingChance = null;
-      if (player.money < 0) await checkBankruptcy(io, room, userid);
+      if (player.money < 0) await checkBankruptcy(io, room, userid, 0);
 
       await saveRoomToDB(room);
       roomUpdate(io, roomId, room);

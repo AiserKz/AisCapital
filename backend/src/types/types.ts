@@ -52,7 +52,7 @@ export interface ChanceType {
   id: number;
   text: string;
   type: "money" | "move" | "jail" | "misc";
-  effect: (p: PlayerInRoom) => void;
+  effect: (p: PlayerInRoom, room: RoomWithPlayers) => void;
 }
 
 export interface PendingChanceType {

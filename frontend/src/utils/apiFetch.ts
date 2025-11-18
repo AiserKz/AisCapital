@@ -53,13 +53,7 @@ apiFetch.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const response = await axios.post(
-          `${API_BASE_URL}/api/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-          }
-        );
+        const response = await refreshAccessToken();
 
         const { accessToken } = response.data;
         localStorage.setItem("accessToken", accessToken);
@@ -86,3 +80,13 @@ apiFetch.interceptors.response.use(
 );
 
 export default apiFetch;
+
+export const refreshAccessToken = async () => {
+  return axios.post(
+    `${API_BASE_URL}/api/auth/refresh`,
+    {},
+    {
+      withCredentials: true,
+    }
+  );
+};

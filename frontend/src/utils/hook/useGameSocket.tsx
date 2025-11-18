@@ -1,10 +1,37 @@
 import { io } from "socket.io-client";
 import { API_BASE_URL } from "../../config";
 import { useEffect, useRef } from "react";
-import type { CurrentPaymentType, RoomDetailType } from "../../types/types";
 import type { RoomAction } from "../../pages/GameRoom";
+import { refreshAccessToken } from "../apiFetch";
+
+const connectSocket = () => {
+  socket.on("reconnect_attempt", () => {
+    socket.auth = {
+      token: localStorage.getItem("accessToken"),
+    };
+  });
+
+  socket.on("connect_error", async (err) => {
+    if (err.message === "Unauthorized") {
+      const newToken = await refreshAccessToken();
+      if (!newToken) return;
+      localStorage.setItem("accessToken", newToken.data.accessToken);
+      socket.auth = {
+        token: newToken.data.accessToken,
+      };
+      socket.connect();
+    }
+  });
+
+  socket.auth = {
+    token: localStorage.getItem("accessToken"),
+  };
+
+  socket.connect();
+};
 
 const socket = io(API_BASE_URL, {
+  autoConnect: false,
   auth: {
     token: localStorage.getItem("accessToken"),
   },
@@ -53,6 +80,9 @@ export default function useGameSocket(
   const hasJoinedRef = useRef(false);
   useEffect(() => {
     if (!roomId || !playerId || hasJoinedRef.current) return;
+
+    connectSocket();
+
     hasJoinedRef.current = true;
 
     console.log("Подключение к комнате");
@@ -102,12 +132,8 @@ export default function useGameSocket(
 
     return () => {
       socket.emit(GAME_EVENTS.LEAVE_ROOM, roomId);
-      socket.off(GAME_EVENTS.PLAYER_JOINED);
-      socket.off(GAME_EVENTS.ROOM_UPDATE);
-      socket.off(GAME_EVENTS.PLAYER_LEFT);
-      socket.off(GAME_EVENTS.PLAYER_HAS_MOVED);
-      socket.off(GAME_EVENTS.RENT_REQUIRED);
-      socket.off(GAME_EVENTS.MESSAGE);
+      Object.values(GAME_EVENTS).forEach((event) => socket.off(event));
+      socket.disconnect();
     };
   }, [roomId, playerId]);
 

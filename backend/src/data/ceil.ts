@@ -1,3 +1,4 @@
+import { getCellState } from "../sockets/utils/roomUtils.js";
 import { Ceil, ChanceType } from "../types/types.js";
 
 // Поля доски
@@ -345,11 +346,14 @@ export const chanceCards: ChanceType[] = [
   },
   {
     id: 3,
-    text: "🏗️ Оплатите ремонт недвижимости: $25 за дом, $100 за отель",
+    text: "🏗️ Оплатите ремонт недвижимости: $25 за каждую клетку",
     type: "money",
-    effect: (p) => {
-      p.money -= 150;
-    }, // можно позже динамически считать
+    effect: (p, room) => {
+      const { cellState } = getCellState(room, p.positionOnBoard);
+      const allOwnedCells = cellState.filter((c) => c.ownerId === p.playerId);
+      const totalTaxes = allOwnedCells.length * 25;
+      p.money -= totalTaxes;
+    },
   },
   {
     id: 4,
@@ -382,10 +386,9 @@ export const chanceCards: ChanceType[] = [
     text: "🚓 Отправляйтесь прямо в тюрьму, не проходите Старт и не получайте $200",
     type: "jail",
     effect: (p) => {
-      if (p.hasJailFreeCard) {
-        p.hasJailFreeCard = false; // карта сгорает
-      } else {
-        p.positionOnBoard = 10; // игрок на клетке тюрьма
+      if (p.hasJailFreeCard) p.hasJailFreeCard = false;
+      else {
+        p.positionOnBoard = 10;
         p.jailed = true;
       }
     },
@@ -402,8 +405,132 @@ export const chanceCards: ChanceType[] = [
     id: 9,
     text: "💵 Получите $50 от каждого игрока",
     type: "money",
+    effect: (p, room) => {
+      const otherPlayers = room.players.filter(
+        (player) => player.playerId !== p.playerId
+      );
+      p.money += otherPlayers.length * 50;
+      otherPlayers.forEach((player) => (player.money -= 50));
+    },
+  },
+  {
+    id: 10,
+    text: "🏠 Получите $50 за каждый вашу клетку",
+    type: "money",
+    effect: (p, room) => {
+      const allOwnedCells = getCellState(
+        room,
+        p.positionOnBoard
+      ).cellState.filter((ceil) => ceil.ownerId === p.playerId);
+      const totalBonus = allOwnedCells.length * 50;
+      p.money += totalBonus;
+    },
+  },
+  {
+    id: 11,
+    text: "💸 Все игроки платят банку по $20",
+    type: "money",
+    effect: (p, room) => {
+      room.players.forEach((player) => (player.money -= 20));
+    },
+  },
+  {
+    id: 12,
+    text: "🚀 Продвиньтесь до ближайшей железной дороги",
+    type: "move",
     effect: (p) => {
-      p.money += 50;
+      const railways = [5, 15, 25, 35];
+      const nextRailway =
+        railways.find((r) => r > p.positionOnBoard) ?? railways[0];
+      p.positionOnBoard = nextRailway;
+    },
+  },
+  {
+    id: 13,
+    text: "⛔ Вернитесь до ближайшей налоговой клетки",
+    type: "move",
+    effect: (p) => {
+      const taxes = [4, 38];
+      const position = p.positionOnBoard;
+      const boardSize = 40;
+
+      let closestTax = taxes[0];
+      let minDistance = boardSize;
+
+      for (const tax of taxes) {
+        // расстояние вперед по кругу
+        const forward = (tax - position + boardSize) % boardSize;
+        // расстояние назад по кругу
+        const backward = (position - tax + boardSize) % boardSize;
+
+        // минимальное расстояние
+        const distance = Math.min(forward, backward);
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestTax = tax;
+        }
+      }
+
+      p.positionOnBoard = closestTax;
+    },
+  },
+  {
+    id: 14,
+    text: "🔄 Обменяйтесь местами с другим игроком",
+    type: "move",
+    effect: (p, room) => {
+      const otherPlayers = room.players.filter(
+        (pl) => pl.playerId !== p.playerId
+      );
+      if (!otherPlayers.length) return;
+      const target =
+        otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
+      const temp = p.positionOnBoard;
+      p.positionOnBoard = target.positionOnBoard;
+      target.positionOnBoard = temp;
+    },
+  },
+  {
+    id: 15,
+    text: "⏳ Счастливая пауза: пропустите оплату ренты на 3 хода",
+    type: "misc",
+    effect: (p) => {
+      p.skipRentTurns = 3;
+    },
+  },
+  {
+    id: 16,
+    text: "💼 Получите бесплатный дом (если есть свободная клетка)",
+    type: "misc",
+    effect: (p, room) => {
+      const cellState = getCellState(room, 0).cellState.filter(
+        (c) => c.ownerId === p.playerId
+      );
+      if (!cellState.length) return;
+      const randomCell =
+        cellState[Math.floor(Math.random() * cellState.length)];
+      randomCell.ownerId = p.playerId;
+    },
+  },
+  // {
+  //   id: 17,
+  //   text: "🎲 Бросьте кубик ещё раз",
+  //   type: "move",
+  //   effect: (p, room) => {
+  //     room.currentTurnPlayerId = p.playerId;
+  //   },
+  // },
+  {
+    id: 18,
+    text: "🎉 Праздник: получите $10 от каждого игрока",
+    type: "money",
+    effect: (p, room) => {
+      const otherPlayers = room.players.filter(
+        (pl) => pl.playerId !== p.playerId
+      );
+      p.money += otherPlayers.length * 10;
+      otherPlayers.forEach((pl) => (pl.money -= 10));
     },
   },
 ];

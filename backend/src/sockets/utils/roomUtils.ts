@@ -54,22 +54,17 @@ export const getCellState = (
 export const calculateRent = (cell: CellState): number => {
   const base = cell.baseRent ?? 100;
 
-  //  каждый дом увеличивает ренту на +120% от базовой ренты
-  const houseMultiplier = 1.2;
-
-  // каждый отель добавляет +180% от базовой ренты
-  const hotelMultiplier = 1.8;
   const maxHotels = 3;
 
   let rent = base;
 
   if (cell.houses && cell.houses > 0) {
-    rent += Math.floor(base * cell.houses * houseMultiplier);
+    rent += Math.floor(base * 0.7 * cell.houses);
   }
 
   if (cell.hotels && cell.hotels > 0) {
     const actualHotels = Math.min(cell.hotels, maxHotels);
-    rent += Math.floor(base * actualHotels * hotelMultiplier);
+    rent += Math.floor(base * 0.9 * actualHotels);
   }
 
   return Math.floor(rent);

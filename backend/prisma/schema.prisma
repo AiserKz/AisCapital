@@ -83,6 +83,7 @@ model PlayerInRoom {
     skippedTurns    Int     @default(0)
     isFrozen        Boolean @default(false)
     hasJailFreeCard Boolean @default(false)
+    skipRentTurns   Int     @default(0)
 
     // Экономика
     money      Int   @default(1500) // стартовый капитал

@@ -39,8 +39,6 @@ export const handleMortageCell = async (io: Server, socket: Socket) => {
       )
         return console.log(`⭕ Сейчас не ваш ход`);
 
-      if (player.jailed) return console.log(`⭕ Игрок ${username} в тюрьме!`);
-
       const mortgageValue = Math.floor((origCell?.price || 0) / 2);
       player.money += mortgageValue;
       cell.mortgaged = true;
@@ -65,7 +63,7 @@ export const handleMortageCell = async (io: Server, socket: Socket) => {
           "EVENT"
         );
       } else if (player.money < 0 && player.isFrozen) {
-        checkBankruptcy(io, room, playerId);
+        checkBankruptcy(io, room, playerId, 0);
       }
 
       room.cellState = cellState.map((c) => (c.id === cellId ? cell : c));

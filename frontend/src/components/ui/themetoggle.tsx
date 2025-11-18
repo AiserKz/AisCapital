@@ -5,7 +5,7 @@ import Button from "./button";
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark">(
-    localStorage.getItem("theme") === "dark" ? "dark" : "light"
+    localStorage.getItem("theme") === "light" ? "light" : "dark"
   );
 
   useEffect(() => {

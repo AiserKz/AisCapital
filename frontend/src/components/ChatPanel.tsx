@@ -84,7 +84,7 @@ export function ChatPanel({ messages, sendMessage }: ChatMessageProps) {
             <AnimatePresence initial={false}>
               {messages.length === 0 ? (
                 <div className="flex justify-center items-center h-full">
-                  <h3 className="text-md">Пока нету сообщений</h3>
+                  <h3 className="text-md select-none">Пока нету сообщений</h3>
                 </div>
               ) : (
                 messages?.map((message, index) => (

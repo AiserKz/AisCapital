@@ -205,6 +205,7 @@ export function GameRoom() {
       {roomState.currentPayment && (
         <CurrentPayment
           roomState={roomState}
+          currentUser={currentUser}
           payRent={payRent}
           setIsMortage={setIsMortage}
         />

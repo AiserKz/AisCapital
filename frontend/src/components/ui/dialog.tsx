@@ -7,11 +7,13 @@ export default function Dialog({
   onOpenChange,
   children,
   isBlur = false,
+  className,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
   isBlur?: boolean;
+  className?: string;
 }) {
   if (!isOpen) return null;
   return (
@@ -20,7 +22,7 @@ export default function Dialog({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className={`fixed top-0 left-0 w-full h-full bg-black/50  flex items-center justify-center z-10 ${
+      className={`fixed top-0 left-0 w-full h-full bg-black/50  flex items-center justify-center z-20 ${className} ${
         isBlur ? "backdrop-blur-xs" : ""
       }`}
     >

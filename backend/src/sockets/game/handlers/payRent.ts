@@ -43,7 +43,7 @@ export const handlePayRent = async (io: Server, socket: Socket) => {
       }
 
       await processRentPayment(room, payer, owner, rent);
-      await checkBankruptcy(io, room, payerId);
+      await checkBankruptcy(io, room, payerId, 0);
       if (payer.money >= 0 && payer.isFrozen) {
         payer.isFrozen = false;
         io.to(room.id).emit(GAME_EVENTS.MESSAGE, {

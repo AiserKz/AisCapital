@@ -1,16 +1,18 @@
-import type { RoomStateType } from "../../types/types";
+import type { PlayerInRoomType, RoomStateType } from "../../types/types";
 import { motion } from "framer-motion";
 import Button from "../ui/button";
 import { useApp } from "../../context/AppContext";
 
 interface CurrentPaymentProps {
   roomState: RoomStateType;
+  currentUser: PlayerInRoomType | null;
   payRent: () => void;
   setIsMortage: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export default function CurrentPayment({
   roomState,
+  currentUser,
   payRent,
   setIsMortage,
 }: CurrentPaymentProps) {
@@ -81,6 +83,7 @@ export default function CurrentPayment({
               Заложить
             </Button>
             <Button
+              disabled={currentUser?.money! < currentPayment.rent}
               variant="default"
               size="medium"
               className="flex-1"
