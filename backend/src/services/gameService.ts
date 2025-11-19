@@ -146,16 +146,44 @@ export const playerExistsInRoom = async (roomId: string, playerId: string) => {
 
 export const addPlayerToRoom = async (roomId: string, playerId: string) => {
   const room = await getRoomById(roomId);
-  if (!room) throw new Error("Комната не найдена");
+  if (!room) throw new Error("Комната не найдена");
 
   if (room.players.length >= room.maxPlayer) throw new Error("Комната полна");
 
-  const existingPlayer = room.players.find(
-    (player) => player.playerId === playerId
-  );
+  // Получаем все комнаты игрока
+  const playerRooms = await prisma.playerInRoom.findMany({
+    where: { playerId },
+    include: { room: true },
+  });
+
+  // Блокируем, если есть активная игра
+  const activeGame = playerRooms.find((pr) => pr.room.status === "IN_PROGRESS");
+  if (activeGame) {
+    throw new Error(
+      "Вы не можете присоединиться к новой комнате, пока игра в другой комнате не завершена"
+    );
+  }
+
+  // Удаляем старые записи в завершённых комнатах
+  const finishedRoomIds = playerRooms
+    .filter((pr) => pr.room.status === "FINISHED")
+    .map((pr) => pr.roomId);
+
+  if (finishedRoomIds.length > 0) {
+    await prisma.playerInRoom.deleteMany({
+      where: {
+        playerId,
+        roomId: { in: finishedRoomIds },
+      },
+    });
+  }
+
+  // Проверяем, что игрок ещё не в этой комнате
+  const existingPlayer = room.players.find((p) => p.playerId === playerId);
   const existsDB = await playerExistsInRoom(roomId, playerId);
   if (existingPlayer || existsDB) throw new Error("Игрок уже в комнате");
 
+  // Назначаем новую позицию
   const takenPositions = room.players
     .map((p) => p.position)
     .filter((pos) => pos !== null)
@@ -171,34 +199,17 @@ export const addPlayerToRoom = async (roomId: string, playerId: string) => {
 
   console.log("🧩 Назначена позиция:", newPosition);
 
-  return prisma.playerInRoom.upsert({
-    where: {
-      playerId_roomId: {
-        playerId,
-        roomId,
-      },
-    },
-    update: {
-      position: newPosition,
-      isReady: false,
-    },
-    create: {
-      roomId,
-      playerId,
-      position: newPosition,
-      isReady: false,
-    },
+  // Upsert с включением player через relation напрямую
+  const playerInRoom = await prisma.playerInRoom.upsert({
+    where: { playerId_roomId: { playerId, roomId } }, // должен существовать compound PK
+    update: { position: newPosition, isReady: false },
+    create: { roomId, playerId, position: newPosition, isReady: false },
     include: {
-      player: {
-        select: {
-          id: true,
-          name: true,
-          avatar: true,
-          level: true,
-        },
-      },
+      player: true, // include relation напрямую, без select
     },
   });
+
+  return playerInRoom;
 };
 
 export const removePlayerFromRoom = async (

@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 import { API_BASE_URL } from "../../config";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import type { RoomAction } from "../../pages/GameRoom";
 import { refreshAccessToken } from "../apiFetch";
 
@@ -77,13 +77,12 @@ export default function useGameSocket(
     time: number;
   }) => void
 ) {
-  const hasJoinedRef = useRef(false);
+  const [hasJoined, setHasJoinedRef] = useState(false);
+
   useEffect(() => {
-    if (!roomId || !playerId || hasJoinedRef.current) return;
+    if (!roomId || !playerId || hasJoined) return;
 
     connectSocket();
-
-    hasJoinedRef.current = true;
 
     console.log("Подключение к комнате");
     socket.emit(GAME_EVENTS.JOIN_ROOM, roomId);
@@ -131,15 +130,13 @@ export default function useGameSocket(
     });
 
     return () => {
-      socket.emit(GAME_EVENTS.LEAVE_ROOM, roomId);
-      Object.values(GAME_EVENTS).forEach((event) => socket.off(event));
+      if (hasJoined) {
+        socket.emit(GAME_EVENTS.LEAVE_ROOM, roomId);
+        Object.values(GAME_EVENTS).forEach((event) => socket.off(event));
+      }
       socket.disconnect();
     };
   }, [roomId, playerId]);
-
-  useEffect(() => {
-    hasJoinedRef.current = false;
-  }, [roomId]);
 
   const movePlayer = () => {
     socket.emit(GAME_EVENTS.PLAYER_MOVE, { roomId });

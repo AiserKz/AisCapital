@@ -13,6 +13,7 @@ import {
   getUserData,
   roomUpdate,
 } from "../../utils/roomUtils.js";
+import { trainCeil } from "../../../data/ceil.js";
 
 export const handleBuyHouse = async (io: Server, socket: Socket) => {
   socket.on(
@@ -30,6 +31,8 @@ export const handleBuyHouse = async (io: Server, socket: Socket) => {
         const { cellState, cell } = await getCellState(room, cellId);
 
         if (!cell) return console.log(`Эта клетка никому не принадлежит`);
+        if (trainCeil.includes(cell.id))
+          return console.log(`⭕ Для Клетки нельзя купить дом/отель`);
         if (cell.ownerId !== playerId)
           return console.log(`⭕ Вы не можете купить дом/отель в чужую клетку`);
         if (type === "house" && cell.houses >= 4)

@@ -62,15 +62,19 @@ export function ChatPanel({ messages, sendMessage }: ChatMessageProps) {
         </h2>
         <div className="cursor-pointer p-1 hover:bg-base-300 rounded-2xl hover:scale-110 transition-all duration-300">
           {isSoundOn ? (
-            <Volume2Icon
-              onClick={() => setIsSoundOn(false)}
-              className="w-5 h-5 "
-            />
+            <motion.div key="volume-on" whileTap={{ scale: 0.8 }}>
+              <Volume2Icon
+                onClick={() => setIsSoundOn(false)}
+                className="w-5 h-5"
+              />
+            </motion.div>
           ) : (
-            <VolumeXIcon
-              onClick={() => setIsSoundOn(true)}
-              className="w-5 h-5 "
-            />
+            <motion.div key="volume-off" whileTap={{ scale: 0.8 }}>
+              <VolumeXIcon
+                onClick={() => setIsSoundOn(true)}
+                className="w-5 h-5"
+              />
+            </motion.div>
           )}
         </div>
       </div>

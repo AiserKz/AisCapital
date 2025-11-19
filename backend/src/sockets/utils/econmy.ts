@@ -9,7 +9,7 @@ import {
 import { GAME_EVENTS } from "../game/events/gameEvents.js";
 import { saveRoomToDB } from "../../services/gameService.js";
 import { prisma } from "../../prisma.js";
-import { cells } from "../../data/ceil.js";
+import { cells, trainCeil } from "../../data/ceil.js";
 
 export const checkBankruptcy = async (
   io: Server,
@@ -141,7 +141,31 @@ export const buyCeil = async (io: Server, roomId: string, playerId: string) => {
       `❌ Игрок ${player.player.name} не имеет достаточно денег для покупки клетки ${targetCell.name}`
     );
 
-  player.money -= targetCell.price;
+  const playerTrainCells = cellState.filter(
+    (c) => trainCeil.includes(c.id) && c.ownerId === playerId
+  );
+  let updatedCellState = [...cellState];
+
+  // Обновляем ренты для поездов
+  if (playerTrainCells.length > 0) {
+    const rentMultiplierMap: Record<number, number> = {
+      1: 1,
+      2: 2,
+      3: 3,
+      4: 4,
+    };
+    const multiplier = rentMultiplierMap[playerTrainCells.length];
+
+    updatedCellState = updatedCellState.map((cell) => {
+      if (playerTrainCells.find((st) => st.id === cell.id)) {
+        const origCell = cells.find((c) => c.id === cell.id);
+        if (origCell && origCell.rent) {
+          return { ...cell, currentRent: origCell.rent * multiplier };
+        }
+      }
+      return cell;
+    });
+  }
 
   const newCellState: CellState = {
     id: cellPos,
@@ -156,10 +180,11 @@ export const buyCeil = async (io: Server, roomId: string, playerId: string) => {
     hotelPrice: targetCell.hotelPrice || 150,
   };
 
-  cellState.push(newCellState);
+  updatedCellState.push(newCellState);
 
-  room.cellState = cellState;
+  room.cellState = updatedCellState;
 
+  player.money -= targetCell.price;
   // Сохраняем и уведомляем всех
   await saveRoomToDB(room);
   console.log(`🏠 Игрок ${player.player.name} купил клетку ${targetCell.name}`);

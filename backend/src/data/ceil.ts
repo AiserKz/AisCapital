@@ -319,6 +319,8 @@ export const cells: Ceil[] = [
   },
 ];
 
+export const trainCeil = [5, 15, 25, 35];
+
 export const chanceCards: ChanceType[] = [
   {
     id: 0,

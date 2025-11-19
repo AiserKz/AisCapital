@@ -8,9 +8,10 @@ import {
   House,
   PlusSquareIcon,
   Hotel,
+  Train,
 } from "lucide-react";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import Card from "./ui/card";
 import Button from "./ui/button";
@@ -42,13 +43,55 @@ const userColor = {
   4: "yellow",
 };
 
+const trainCeil = [5, 15, 25, 35];
+
+const getColorClass = (color: string) => {
+  const colors: Record<string, string> = {
+    brown: "bg-amber-800",
+    lightblue: "bg-sky-400",
+    pink: "bg-pink-400",
+    orange: "bg-orange-500",
+    red: "bg-red-500",
+    yellow: "bg-yellow-400",
+    green: "bg-green-500",
+    darkblue: "bg-blue-700",
+  };
+  return colors[color] || "bg-slate-300";
+};
+
+const getPlayerColorClass = (color: string) => {
+  const colors: Record<string, string> = {
+    blue: "bg-blue-500",
+    red: "bg-red-500",
+    green: "bg-green-500",
+    yellow: "bg-yellow-500",
+  };
+  return colors[color] || "bg-slate-500";
+};
+
+const getIcon = (type: string) => {
+  switch (type) {
+    case "PROPERTY":
+      return <Home className="w-6 h-6 sm:w-7 sm:h-7" />;
+    case "CHANCE":
+      return <Gift className="w-6 h-6 sm:w-7 sm:h-7" />;
+    case "TAX":
+      return <AlertTriangle className="w-6 h-6 sm:w-7 sm:h-7" />;
+    case "RAILROAD":
+      return <Train className="w-6 h-6 sm:w-7 sm:h-7" />;
+    case "UTILITY":
+      return <Landmark className="w-6 h-6 sm:w-7 sm:h-7" />;
+    default:
+      return null;
+  }
+};
+
 export function GameBoard({
   roomState,
   isMortage,
   handleMortage,
   handleUnMortage,
   currentUser,
-
   handleBuyHouse,
 }: GameBoardProps) {
   const { user } = useApp();
@@ -57,306 +100,286 @@ export function GameBoard({
   const players = roomState.currentRoom?.players ?? [];
   const cellState = roomState.currentRoom?.cellState ?? [];
   const isCurrentTurn = roomState.currentRoom?.currentTurnPlayerId === user?.id;
+  const playersByCell = useMemo(() => {
+    const map: Record<number, typeof players> = {};
+    players.forEach((p) => {
+      if (!map[p.positionOnBoard]) map[p.positionOnBoard] = [];
+      map[p.positionOnBoard].push(p);
+    });
+    return map;
+  }, [players]);
 
-  const getColorClass = (color: string) => {
-    const colors: Record<string, string> = {
-      brown: "bg-amber-800",
-      lightblue: "bg-sky-400",
-      pink: "bg-pink-400",
-      orange: "bg-orange-500",
-      red: "bg-red-500",
-      yellow: "bg-yellow-400",
-      green: "bg-green-500",
-      darkblue: "bg-blue-700",
-    };
-    return colors[color] || "bg-slate-300";
-  };
+  const renderCell = useCallback(
+    (cell: Ceil, position: string) => {
+      const isCorner = cell.type.toUpperCase() === "CORNER";
+      const isSide = position === "left" || position === "right";
+      const playersOnCell = playersByCell[cell.id] || [];
 
-  const getPlayerColorClass = (color: string) => {
-    const colors: Record<string, string> = {
-      blue: "bg-blue-500",
-      red: "bg-red-500",
-      green: "bg-green-500",
-      yellow: "bg-yellow-500",
-    };
-    return colors[color] || "bg-slate-500";
-  };
+      const cellOwner = cellState?.find((c) => c.id === cell.id);
+      const ownerPlayer = cellOwner
+        ? players.find((p) => p.playerId === cellOwner.ownerId)
+        : null;
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "PROPERTY":
-        return <Home className="w-6 h-6 sm:w-7 sm:h-7" />;
-      case "CHANCE":
-        return <Gift className="w-6 h-6 sm:w-7 sm:h-7" />;
-      case "TAX":
-        return <AlertTriangle className="w-6 h-6 sm:w-7 sm:h-7" />;
-      case "RAILROAD":
-      case "UTILITY":
-        return <Landmark className="w-6 h-6 sm:w-7 sm:h-7" />;
-      default:
-        return null;
-    }
-  };
+      const userCell = cellState?.filter(
+        (c) => c.ownerId === currentUser?.playerId
+      );
+      const isMortagedCell =
+        isMortage &&
+        userCell?.find((c) => c.id === cell.id) &&
+        !cellOwner?.mortgaged;
+      const cellIsMortaged = cellOwner ? cellOwner.mortgaged : false;
 
-  const renderCell = (cell: Ceil, position: string) => {
-    const isCorner = cell.type.toUpperCase() === "CORNER";
-    const isSide = position === "left" || position === "right";
-    const playersOnCell = players.filter((p) => p.positionOnBoard === cell.id);
+      const spanClass = isCorner
+        ? "col-span-2 row-span-2"
+        : isSide
+        ? "col-span-2 row-span-1"
+        : "col-span-1 row-span-2";
 
-    const cellOwner = cellState?.find((c) => c.id === cell.id);
-    const ownerPlayer = cellOwner
-      ? players.find((p) => p.playerId === cellOwner.ownerId)
-      : null;
+      const contentClass = isSide
+        ? `flex flex-row-reverse grow items-center text-left mr-4`
+        : `flex flex-col grow items-center text-center py-3 ${
+            isCorner
+              ? "justify-center"
+              : position === "top"
+              ? "justify-end"
+              : "justify-start"
+          }`;
 
-    const userCell = cellState?.filter(
-      (c) => c.ownerId === currentUser?.playerId
-    );
-    const isMortagedCell =
-      isMortage &&
-      userCell?.find((c) => c.id === cell.id) &&
-      !cellOwner?.mortgaged;
-    const cellIsMortaged = cellOwner ? cellOwner.mortgaged : false;
+      const nameClass = isSide
+        ? `block font-medium leading-tight tracking-tight truncate text-base-content text-sm sm:text-[0.9rem] transform origin-center`
+        : `block font-medium leading-tight tracking-tight truncate  max-w-[90%] text-base-content ${
+            isCorner ? "text-lg" : "text-sm sm:text-[0.8rem]"
+          }`;
 
-    const spanClass = isCorner
-      ? "col-span-2 row-span-2"
-      : isSide
-      ? "col-span-2 row-span-1"
-      : "col-span-1 row-span-2";
-
-    const contentClass = isSide
-      ? `flex flex-row-reverse grow items-center text-left mr-4`
-      : `flex flex-col grow items-center text-center py-3 ${
-          isCorner
-            ? "justify-center"
-            : position === "top"
-            ? "justify-end"
-            : "justify-start"
-        }`;
-
-    const nameClass = isSide
-      ? `block font-medium leading-tight tracking-tight truncate text-base-content text-sm sm:text-[0.9rem] transform origin-center`
-      : `block font-medium leading-tight tracking-tight truncate  max-w-[90%] text-base-content ${
-          isCorner ? "text-lg" : "text-sm sm:text-[0.8rem]"
-        }`;
-
-    const colorStrip = cell.color ? (
-      isSide ? (
-        position === "left" ? (
+      const colorStrip = cell.color ? (
+        isSide ? (
+          position === "left" ? (
+            <div
+              className={`absolute left-0 top-0 h-full w-3 ${getColorClass(
+                cell.color as string
+              )} rounded-l-lg`}
+            />
+          ) : (
+            <div
+              className={`absolute right-0 top-0 h-full w-3 ${getColorClass(
+                cell.color as string
+              )} rounded-r-lg`}
+            />
+          )
+        ) : position === "top" ? (
           <div
-            className={`absolute left-0 top-0 h-full w-3 ${getColorClass(
+            className={`absolute top-0 w-full h-3 ${getColorClass(
               cell.color as string
-            )} rounded-l-lg`}
+            )} rounded-t-lg`}
           />
         ) : (
           <div
-            className={`absolute right-0 top-0 h-full w-3 ${getColorClass(
+            className={`absolute bottom-0 w-full h-3 ${getColorClass(
               cell.color as string
-            )} rounded-r-lg`}
+            )} rounded-b-lg`}
           />
         )
-      ) : position === "top" ? (
-        <div
-          className={`absolute top-0 w-full h-3 ${getColorClass(
-            cell.color as string
-          )} rounded-t-lg`}
-        />
-      ) : (
-        <div
-          className={`absolute bottom-0 w-full h-3 ${getColorClass(
-            cell.color as string
-          )} rounded-b-lg`}
-        />
-      )
-    ) : null;
+      ) : null;
 
-    const playersContainerClass = isSide
-      ? "absolute bottom-1 right-1 flex gap-0.5"
-      : "absolute top-1 right-1 flex gap-0.5";
+      const playersContainerClass = isSide
+        ? "absolute bottom-1 right-1 flex gap-0.5"
+        : "absolute top-1 right-1 flex gap-0.5";
 
-    const ownerClass = isSide
-      ? position === "left"
-        ? "absolute -right-2 flex gap-0.5"
-        : "absolute -left-2 flex gap-0.5"
-      : position === "top"
-      ? "absolute -bottom-2 flex gap-0.5"
-      : "absolute -top-3 flex gap-0.5";
+      const ownerClass = isSide
+        ? position === "left"
+          ? "absolute -right-2 flex gap-0.5"
+          : "absolute -left-2 flex gap-0.5"
+        : position === "top"
+        ? "absolute -bottom-2 flex gap-0.5"
+        : "absolute -top-3 flex gap-0.5";
 
-    const houseClass = isSide
-      ? position === "left"
-        ? "absolute -right-12 flex gap-0.5 flex-col"
-        : "absolute -left-12 flex gap-0.5 flex-col"
-      : position === "top"
-      ? "absolute -bottom-10 flex gap-0.5 flex-col justify-start"
-      : "absolute -top-10 flex gap-0.5 flex-col-reverse justify-start";
+      const houseClass = isSide
+        ? position === "left"
+          ? "absolute -right-12 flex gap-0.5 flex-col"
+          : "absolute -left-12 flex gap-0.5 flex-col"
+        : position === "top"
+        ? "absolute -bottom-10 flex gap-0.5 flex-col justify-start"
+        : "absolute -top-10 flex gap-0.5 flex-col-reverse justify-start";
 
-    return (
-      <motion.div
-        key={cell.id}
-        className={`relative ${spanClass} cursor-pointer`}
-        whileHover={{ scale: 1.05 }}
-        onClick={
-          isMortage ? () => handleMortage(cell.id) : () => setSelectedCell(cell)
-        }
-      >
-        <Card
-          className={`h-full w-full bg-base-300 hover:shadow-xl transition-all rounded-lg  flex ${
-            isSide ? "flex-row" : "flex-col"
-          } justify-between relative ${
-            isMortagedCell && "border border-warning scale-105"
+      return (
+        <motion.div
+          key={cell.id}
+          className={`relative ${spanClass} cursor-pointer`}
+          whileHover={{ scale: 1.05 }}
+          onClick={
+            isMortage
+              ? () => handleMortage(cell.id)
+              : () => setSelectedCell(cell)
           }
+        >
+          <Card
+            className={`h-full w-full bg-base-300 hover:shadow-xl transition-all rounded-lg  flex ${
+              isSide ? "flex-row" : "flex-col"
+            } justify-between relative ${
+              isMortagedCell && "border border-warning scale-105"
+            }
           ${cellIsMortaged ? "opacity-65" : ""}
           `}
-        >
-          {/* Цветная полоска */}
-          {colorStrip}
+          >
+            {/* Цветная полоска */}
+            {colorStrip}
 
-          {/* Основное содержимое */}
-          <div className={contentClass}>
-            {/* Иконка */}
-            <div
-              className={`flex items-center justify-center ${
-                isSide ? "ml-1" : "mb-1"
-              }`}
-            >
-              <div className="text-base-content opacity-80">
-                {getIcon(cell.type.toUpperCase())}
-              </div>
-            </div>
-
-            <div className={`flex flex-col items-center justify-center w-full`}>
-              {/* Название */}
-              <span className={nameClass} title={cell.name}>
-                {cell.name}
-              </span>
-
-              {/* Цена */}
-              {cell.price ? (
-                <div
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-base-content/70 text-[0.7rem] font-medium mt-1 ${
-                    isSide ? "self-center" : ""
-                  } ${
-                    cellOwner
-                      ? isMortagedCell
-                        ? "bg-stone-800"
-                        : "bg-accent"
-                      : "bg-base-200"
-                  } `}
-                >
-                  <DollarSign className="w-3 h-3 text-success shrink-0" />
-                  <span className="truncate">
-                    {cellOwner
-                      ? isMortagedCell
-                        ? cell.price / 2
-                        : cellOwner.currentRent
-                      : cell.price}
-                  </span>
+            {/* Основное содержимое */}
+            <div className={contentClass}>
+              {/* Иконка */}
+              <div
+                className={`flex items-center justify-center ${
+                  isSide ? "ml-1" : "mb-1"
+                }`}
+              >
+                <div className="text-base-content opacity-80">
+                  {getIcon(cell.type.toUpperCase())}
                 </div>
-              ) : (
-                !isCorner && <div className="h-7"></div>
+              </div>
+
+              <div
+                className={`flex flex-col items-center justify-center w-full`}
+              >
+                {/* Название */}
+                <span className={nameClass} title={cell.name}>
+                  {cell.name}
+                </span>
+
+                {/* Цена */}
+                {cell.price ? (
+                  <div
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-base-content/70 text-[0.7rem] font-medium mt-1 ${
+                      isSide ? "self-center" : ""
+                    } ${
+                      cellOwner
+                        ? isMortagedCell
+                          ? "bg-stone-800"
+                          : "bg-accent"
+                        : "bg-base-200"
+                    } `}
+                  >
+                    <DollarSign className="w-3 h-3 text-success shrink-0" />
+                    <span className="truncate">
+                      {cellOwner
+                        ? isMortagedCell
+                          ? cell.price / 2
+                          : cellOwner.currentRent
+                        : cell.price}
+                    </span>
+                  </div>
+                ) : (
+                  !isCorner && <div className="h-7"></div>
+                )}
+              </div>
+
+              {/* Владелец */}
+              {cellOwner && (
+                <div
+                  className={`w-4 h-4 mt-1 ${ownerClass} rounded-full ${getPlayerColorClass(
+                    userColor[ownerPlayer?.position as keyof typeof userColor]
+                  )} border-2 border-base-100 shadow-sm`}
+                  title={`Владелец: ${ownerPlayer?.player.name}`}
+                />
               )}
             </div>
 
-            {/* Владелец */}
-            {cellOwner && (
-              <div
-                className={`w-4 h-4 mt-1 ${ownerClass} rounded-full ${getPlayerColorClass(
-                  userColor[ownerPlayer?.position as keyof typeof userColor]
-                )} border-2 border-base-100 shadow-sm`}
-                title={`Владелец: ${ownerPlayer?.player.name}`}
-              />
+            {/* Игроки на этой клетке */}
+            {playersOnCell.length > 0 && (
+              <div className={playersContainerClass}>
+                {playersOnCell.map((player) => (
+                  <motion.div
+                    key={player.id}
+                    className={`w-6 h-6 rounded-full ${getPlayerColorClass(
+                      userColor[player.position as keyof typeof userColor]
+                    )} border-2 border-white shadow-md flex items-center justify-center text-white text-xs`}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 500 }}
+                  >
+                    {player.player.name[0].toUpperCase()}
+                  </motion.div>
+                ))}
+              </div>
             )}
+
+            {cellOwner && (
+              <div className={`${houseClass} flex `}>
+                <div className="flex gap-1">
+                  {[...Array(cellOwner.houses)].map((_, index) => (
+                    <span key={index} className="status status-success" />
+                  ))}
+                </div>
+                <div className="flex h-4 gap-1">
+                  {[...Array(cellOwner.hotels)].map((_, index) => (
+                    <span key={index} className="status status-info" />
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+        </motion.div>
+      );
+    },
+    [players, cellState, currentUser, isMortage, handleMortage]
+  );
+
+  const renderHouses = useCallback(
+    (cell: CellState) => {
+      if (
+        cellState.find((c) => c.id === cell.id)?.ownerId !==
+          currentUser?.playerId ||
+        trainCeil.includes(cell.id)
+      )
+        return null;
+
+      const isBlockedBuyHouse =
+        cell.houses === 4 ||
+        !isCurrentTurn ||
+        cell?.housePrice! > currentUser?.money!;
+      const isBlockedBuyHotel =
+        cell.hotels === 3 ||
+        !isCurrentTurn ||
+        cell.houses < 4 ||
+        cell?.hotelPrice! > currentUser?.money!;
+
+      return (
+        <div className="py-2 space-y-2">
+          <h3 className="text-base-content font-semibold">Дома и отели</h3>
+          <div className="flex space-x-1 items-center">
+            {[...Array(cell.houses)].map((_, index) => (
+              <House key={index} className="w-8 h-8 text-emerald-500" />
+            ))}
+            <Button
+              variant="default"
+              size="small"
+              className="btn-soft"
+              disabled={isBlockedBuyHouse}
+              onClick={() => handleBuyHouse(cell.id, "house")}
+            >
+              <PlusSquareIcon className="w-8 h-8" />
+              <span className="">Купить дом {cell.housePrice}$</span>
+            </Button>
           </div>
-
-          {/* Игроки на этой клетке */}
-          {playersOnCell.length > 0 && (
-            <div className={playersContainerClass}>
-              {playersOnCell.map((player) => (
-                <motion.div
-                  key={player.id}
-                  className={`w-6 h-6 rounded-full ${getPlayerColorClass(
-                    userColor[player.position as keyof typeof userColor]
-                  )} border-2 border-white shadow-md flex items-center justify-center text-white text-xs`}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 500 }}
-                >
-                  {player.player.name[0].toUpperCase()}
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          {cellOwner && (
-            <div className={`${houseClass} flex `}>
-              <div className="flex gap-1">
-                {[...Array(cellOwner.houses)].map((_, index) => (
-                  <span key={index} className="status status-success" />
-                ))}
-              </div>
-              <div className="flex h-4 gap-1">
-                {[...Array(cellOwner.hotels)].map((_, index) => (
-                  <span key={index} className="status status-info" />
-                ))}
-              </div>
-            </div>
-          )}
-        </Card>
-      </motion.div>
-    );
-  };
-
-  const renderHouses = (cell: CellState) => {
-    if (
-      cellState.find((c) => c.id === cell.id)?.ownerId !== currentUser?.playerId
-    )
-      return null;
-
-    const isBlockedBuyHouse =
-      cell.houses === 4 ||
-      !isCurrentTurn ||
-      cell?.housePrice! > currentUser?.money!;
-    const isBlockedBuyHotel =
-      cell.hotels === 3 ||
-      !isCurrentTurn ||
-      cell.houses < 4 ||
-      cell?.hotelPrice! > currentUser?.money!;
-
-    return (
-      <div className="py-2 space-y-2">
-        <h3 className="text-base-content font-semibold">Дома и отели</h3>
-        <div className="flex space-x-1 items-center">
-          {[...Array(cell.houses)].map((_, index) => (
-            <House key={index} className="w-8 h-8 text-emerald-500" />
-          ))}
-          <Button
-            variant="default"
-            size="small"
-            className="btn-soft"
-            disabled={isBlockedBuyHouse}
-            onClick={() => handleBuyHouse(cell.id, "house")}
-          >
-            <PlusSquareIcon className="w-8 h-8" />
-            <span className="">Купить дом {cell.housePrice}$</span>
-          </Button>
+          <div className="flex space-x-1 items-center">
+            {[...Array(cell.hotels)].map((_, index) => (
+              <Hotel key={index} className="w-8 h-8 text-blue-400" />
+            ))}
+            <Button
+              variant="default"
+              size="small"
+              className=" btn-soft"
+              disabled={isBlockedBuyHotel}
+              onClick={() => handleBuyHouse(cell.id, "hotel")}
+            >
+              <PlusSquareIcon className="w-8 h-8" />
+              <span className="">Купить отель {cell.hotelPrice}$ </span>
+            </Button>
+          </div>
         </div>
-        <div className="flex space-x-1 items-center">
-          {[...Array(cell.hotels)].map((_, index) => (
-            <Hotel key={index} className="w-8 h-8 text-blue-400" />
-          ))}
-          <Button
-            variant="default"
-            size="small"
-            className=" btn-soft"
-            disabled={isBlockedBuyHotel}
-            onClick={() => handleBuyHouse(cell.id, "hotel")}
-          >
-            <PlusSquareIcon className="w-8 h-8" />
-            <span className="">Купить отель {cell.hotelPrice}$ </span>
-          </Button>
-        </div>
-      </div>
-    );
-  };
+      );
+    },
+    [selectedCell, currentUser, isCurrentTurn, handleBuyHouse]
+  );
 
   return (
     <>
@@ -414,10 +437,13 @@ export function GameBoard({
       >
         <div className="min-w-md">
           <div>
-            <h2 className="flex items-center gap-2">
-              {selectedCell && getIcon(selectedCell.type)}
-              {selectedCell?.name}
-            </h2>
+            <div className="flex items-center space-x-2">
+              <h2 className="flex items-center gap-2">
+                {selectedCell && getIcon(selectedCell.type)}
+                {selectedCell?.name}
+              </h2>
+              <span className="text-base-content/60">#{selectedCell?.id}</span>
+            </div>
             <span>
               {(selectedCell?.type.toUpperCase() === "RAILROAD" ||
                 selectedCell?.type.toUpperCase() === "PROPERTY" ||
@@ -457,12 +483,6 @@ export function GameBoard({
                               (p) => p.playerId === ownerCell.ownerId
                             )
                           : null;
-                        console.log(
-                          "Хозяин клетки",
-                          owner,
-                          `Сравнило ${selectedCell.id} с ${ownerCell?.ownerId}`
-                        );
-
                         return (
                           <Badge
                             variant={owner ? "secondary" : "ghost"}

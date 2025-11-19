@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Dice1,
   Dice2,
@@ -57,10 +57,17 @@ export function ActionPanel({
 
   const currentRoom = roomState.currentRoom;
   const cellState = roomState.cellState;
-  const isCurrentTurn =
-    currentRoom?.currentTurnPlayerId === currentUser.playerId;
-  const isCurrentTrunUser = currentRoom?.players.find(
-    (p) => p.playerId == currentRoom.currentTurnPlayerId
+  const isCurrentTurn = useMemo(
+    () => currentRoom?.currentTurnPlayerId === currentUser.playerId,
+    [currentRoom?.currentTurnPlayerId, currentUser.playerId]
+  );
+
+  const isCurrentTrunUser = useMemo(
+    () =>
+      currentRoom?.players.find(
+        (p) => p.playerId == currentRoom.currentTurnPlayerId
+      ),
+    [currentRoom?.players, currentRoom?.currentTurnPlayerId]
   );
 
   const [displayDice] = useState<{
@@ -75,18 +82,18 @@ export function ActionPanel({
     isBuying
   );
 
-  const getDiceIcon = (value: number) => {
+  const getDiceIcon = useCallback((value: number) => {
     const icons = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
     const Icon = icons[value - 1] || Dice1;
     return Icon;
-  };
+  }, []);
 
-  const handleRollDice = async () => {
+  const handleRollDice = useCallback(async () => {
     if (!isCurrentTurn || isRolling || isBlocked) return;
     movePlayer();
-  };
+  }, [isCurrentTurn, isRolling, isBlocked]);
 
-  const rollDiceAnimation = (onFinish: () => void) => {
+  const rollDiceAnimation = useCallback((onFinish: () => void) => {
     let count = 0;
     const interval = setInterval(() => {
       setDiceValue(Math.floor(Math.random() * 6) + 1);
@@ -97,17 +104,17 @@ export function ActionPanel({
         onFinish();
       }
     }, 100);
-  };
+  }, []);
 
-  const handleBuyProperty = () => {
+  const handleBuyProperty = useCallback(() => {
     if (!isCurrentTurn) return;
     buyCell();
-  };
+  }, [isCurrentTurn]);
 
-  const handleEndTurn = () => {
+  const handleEndTurn = useCallback(() => {
     if (!isCurrentTurn) return;
     skipTurn();
-  };
+  }, [isCurrentTurn]);
 
   useEffect(() => {
     if (!dice?.dice1 || !dice?.dice2) return;
@@ -121,14 +128,21 @@ export function ActionPanel({
   }, [dice.dice1, dice.dice2]);
 
   const timeProgress = (timer / 30) * 100;
-  const DiceIcon1 =
-    getDiceIcon(isRolling ? displayDice.dice1 : dice.dice1) || null;
-  const DiceIcon2 =
-    getDiceIcon(isRolling ? displayDice.dice2 : dice.dice2) || null;
+  const DiceIcon1 = useMemo(
+    () => getDiceIcon(isRolling ? displayDice.dice1 : dice.dice1),
+    [isRolling, displayDice.dice1, dice.dice1, getDiceIcon]
+  );
+
+  const DiceIcon2 = useMemo(
+    () => getDiceIcon(isRolling ? displayDice.dice2 : dice.dice2),
+    [isRolling, displayDice.dice2, dice.dice2, getDiceIcon]
+  );
 
   const gameIsReady = currentRoom?.status === "WAITING";
 
-  const renderButtons = () => {
+  const PendingBlocked = currentUser.pendingAction === null;
+
+  const renderButtons = useMemo(() => {
     if (canBuy) {
       return (
         <Button
@@ -153,15 +167,28 @@ export function ActionPanel({
         </Button>
       );
     }
-  };
+  }, [canBuy, isOwnerByPlayer, PendingBlocked, handleBuyProperty]);
 
-  const TurnBlocked =
-    !isCurrentTurn ||
-    isBlocked ||
-    currentUser.isFrozen ||
-    (currentRoom!.comboTurn === 0 && currentUser.pendingAction !== null);
+  const TurnBlocked = useMemo(
+    () =>
+      !isCurrentTurn ||
+      isBlocked ||
+      currentUser.isFrozen ||
+      (currentRoom!.comboTurn === 0 && currentUser.pendingAction !== null),
+    [
+      isCurrentTurn,
+      isBlocked,
+      currentUser.isFrozen,
+      currentRoom?.comboTurn,
+      currentUser.pendingAction,
+    ]
+  );
 
-  const PendingBlocked = currentUser.pendingAction === null;
+  const ownerCells = useMemo(
+    () =>
+      cellState?.filter((cell) => cell.ownerId === currentUser.playerId) ?? [],
+    [cellState]
+  );
 
   return (
     <Card className="shadow-sm p-6">
@@ -265,7 +292,7 @@ export function ActionPanel({
           </motion.div>
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            {renderButtons()}
+            {renderButtons}
           </motion.div>
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -364,7 +391,7 @@ export function ActionPanel({
           <div className="bg-base-200 rounded-lg p-3">
             <p className="text-xs text-base-content/60 mb-1">Объектов</p>
             <p className="text-base-content">
-              {currentUser.properties?.length || 0}
+              {ownerCells.length} / {cellState.length}
             </p>
           </div>
         </div>

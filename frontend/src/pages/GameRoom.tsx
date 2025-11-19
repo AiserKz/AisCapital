@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { PlayerList } from "../components/PlayerList";
 import { ChatPanel } from "../components/ChatPanel";
@@ -24,6 +24,8 @@ import { HeaderGameRoom } from "../components/HeaderGameRoom";
 import CurrentPayment from "../components/gameRoom/CurrentPayment";
 import { useGameMessage } from "../utils/hook/useGameMessage";
 import { usePendingTimer } from "../utils/hook/usePendingTimer";
+import { Loading } from "../components/Loading";
+import { ErrorScreen } from "../components/Error";
 
 export type RoomAction =
   | { type: "SET_ROOM"; payload: RoomDetailType }
@@ -76,6 +78,7 @@ export function GameRoom() {
     dice1: 1,
     dice2: 1,
   });
+  const [loading, setLoading] = useState<boolean>(true);
 
   const handleRollDice = async (dice1: number, dice2: number) => {
     setDice({ dice1, dice2 });
@@ -91,10 +94,10 @@ export function GameRoom() {
     clearMessage,
   } = useGameMessage(user?.id);
 
-  const roomClosed = (message: string) => {
+  const roomClosed = useCallback((message: string) => {
     toast.error(message);
     navigate("/");
-  };
+  }, []);
 
   const { timer, startTimer } = usePendingTimer();
 
@@ -123,11 +126,15 @@ export function GameRoom() {
 
   useEffect(() => {
     const fetchRoom = async () => {
+      if (!roomId) return;
+      setLoading(true);
       const savedPassword =
         sessionStorage.getItem(`room-access-${roomId}`) || "";
-      const res = await apiFetch.get(`/api/rooms/${roomId}`, {
-        params: { password: savedPassword },
-      });
+      const res = await apiFetch
+        .get(`/api/rooms/${roomId}`, {
+          params: { password: savedPassword },
+        })
+        .finally(() => setLoading(false));
 
       if (res.status === 403) {
         navigate("/");
@@ -157,18 +164,21 @@ export function GameRoom() {
     });
   }, [roomState.currentRoom]);
 
-  const handleLeave = async () => {
+  const handleLeave = useCallback(async () => {
     navigate("/");
     toast.success("Вы покинули комнату");
-  };
+  }, []);
 
-  const handleUpgradeCell = async (cellId: number, type: "house" | "hotel") => {
-    handleBuyHouse(cellId, type);
-  };
+  const handleUpgradeCell = useCallback(
+    async (cellId: number, type: "house" | "hotel") => {
+      handleBuyHouse(cellId, type);
+    },
+    []
+  );
 
-  const handleMortgaged = async () => {
+  const handleMortgaged = useCallback(async () => {
     setIsMortage(!isMortage);
-  };
+  }, [isMortage]);
 
   const currentUser = useMemo(() => {
     return (
@@ -177,15 +187,8 @@ export function GameRoom() {
     );
   }, [roomState.currentRoom, user?.id]);
 
-  if (!roomState.currentRoom)
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="flex justify-center items-center">
-          <p className="loading loading-lg text-info loading-infinity w-18 h-18"></p>
-          <p className="text-2xl animate-pulse">Загрузка...</p>
-        </div>
-      </div>
-    );
+  if (!roomState.currentRoom) return <Loading />;
+  if (!roomState.currentRoom && !loading) return <ErrorScreen />;
 
   const currentRoom = roomState.currentRoom!;
 
@@ -194,6 +197,8 @@ export function GameRoom() {
     currentCell?.isBuying &&
     currentUser &&
     (currentCell?.price || 10) <= currentUser?.money;
+
+  console.log("Перерендер страницы");
 
   return (
     <div className="min-h-screen">
@@ -254,7 +259,7 @@ export function GameRoom() {
       {/* Главное содержимое */}
       <div className="p-6 mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Left Column - Игроки & Чат */}
+          {/* Left Column | Игроки & Чат */}
           <motion.div
             className="lg:col-span-1 space-y-6"
             initial={{ x: -20, opacity: 0 }}
@@ -282,7 +287,7 @@ export function GameRoom() {
             />
           </motion.div>
 
-          {/* Right column - Действия & Журнал */}
+          {/* Right column | Действия & Журнал */}
           <motion.div
             className="lg:col-span-1 space-y-6"
             initial={{ x: 20, opacity: 0 }}

@@ -4,6 +4,7 @@ import { Users, Home, DollarSign, Crown, Columns3 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { RoomStateType } from "../types/types";
 import { useApp } from "../context/AppContext";
+import { useMemo } from "react";
 
 interface PlayerListProps {
   roomState: RoomStateType;
@@ -25,9 +26,13 @@ export function PlayerList({ roomState }: PlayerListProps) {
   const currentRoom = roomState.currentRoom;
   const cellState = roomState.cellState;
   const players = roomState.currentRoom?.players ?? [];
-  const richPlayers = players.reduce((prev, curr) => {
-    return curr.money > prev.money ? curr : prev;
-  }, players[0]);
+  const richPlayers = useMemo(
+    () =>
+      players.reduce((prev, curr) => {
+        return curr.money > prev.money ? curr : prev;
+      }, players[0]),
+    [players]
+  );
   const isCurrentTrunPlayerId = roomState.currentRoom?.currentTurnPlayerId;
   return (
     <Card className="shadow-sm p-6">
