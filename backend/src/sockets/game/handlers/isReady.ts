@@ -25,7 +25,7 @@ export const handleIsReady = async (io: Server, socket: Socket) => {
         room.players.length === room.maxPlayer &&
         room.players.every((p) => p.isReady)
       ) {
-        room.status = "STARTING";
+        room.status = "IN_PROGRESS";
         room.currentTurnPlayerId = room.players[0].playerId;
         console.log(`👤 Начинаем игру в комнате ${room?.name}`);
       }

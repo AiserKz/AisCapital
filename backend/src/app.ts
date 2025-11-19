@@ -18,7 +18,11 @@ registerSocketHandler(io);
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "https://dkkt7tlx-5173.euw.devtunnels.ms",
+    ],
     credentials: true,
   })
 );

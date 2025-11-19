@@ -288,6 +288,14 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
               `❌ Игрок ${player.player.name} не имеет достаточно денег для оплаты ренты`,
               "EVENT"
             );
+            const payment = {
+              payerId: player.playerId,
+              ownerId: owner.playerId,
+              cellId: cell.id,
+              rent,
+            };
+            room.currentPayment = payment;
+            io.to(roomId).emit(GAME_EVENTS.RENT_REQUIRED, payment);
           } else {
             const payment = {
               payerId: player.playerId,

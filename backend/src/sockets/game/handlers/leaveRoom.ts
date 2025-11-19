@@ -28,6 +28,7 @@ export const handleLeaveRoom = async (io: Server, socket: Socket) => {
       if (!room) return;
 
       if (room.status === "WAITING") {
+        console.log(`👤 Пользователь ${username} покинул комнату ${roomId}`);
         await removePlayerFromRoom(roomId, playerId);
         io.to(roomId).emit(GAME_EVENTS.PLAYER_LEFT, playerId);
         await roomUpdate(io, roomId, room);

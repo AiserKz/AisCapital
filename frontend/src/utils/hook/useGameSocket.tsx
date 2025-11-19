@@ -130,10 +130,9 @@ export default function useGameSocket(
     });
 
     return () => {
-      if (hasJoined) {
-        socket.emit(GAME_EVENTS.LEAVE_ROOM, roomId);
-        Object.values(GAME_EVENTS).forEach((event) => socket.off(event));
-      }
+      socket.emit(GAME_EVENTS.LEAVE_ROOM, roomId);
+      Object.values(GAME_EVENTS).forEach((event) => socket.off(event));
+
       socket.disconnect();
     };
   }, [roomId, playerId]);

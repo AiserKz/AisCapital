@@ -33,11 +33,18 @@ export default function AppProvider({
   const fetchData = async () => {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
+
     const me = await server.getMe();
     setUser(me);
+
     const leader = await server.getLeaderboard();
     setleader(leader);
-    const rooms = await server.getRooms();
+
+    const roomsResponse = await server.getRooms();
+    // если API возвращает объект { rooms: [...] }
+    const rooms = Array.isArray(roomsResponse)
+      ? roomsResponse
+      : roomsResponse.rooms || [];
     setRoomList(rooms);
   };
 

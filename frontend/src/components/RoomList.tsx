@@ -83,7 +83,7 @@ export function RoomList() {
 
   return (
     <div className="space-y-3">
-      {roomList.map((room, index) => (
+      {(roomList || []).map((room, index) => (
         <motion.div
           key={room.id}
           initial={{ opacity: 0, y: 20 }}

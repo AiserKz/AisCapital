@@ -5,6 +5,6 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    // origin: "https://691cafd7aceb.ngrok-free.app",
+    origin: "https://dkkt7tlx-5173.euw.devtunnels.ms",
   },
 });

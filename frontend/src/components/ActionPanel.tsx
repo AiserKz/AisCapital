@@ -391,7 +391,7 @@ export function ActionPanel({
           <div className="bg-base-200 rounded-lg p-3">
             <p className="text-xs text-base-content/60 mb-1">Объектов</p>
             <p className="text-base-content">
-              {ownerCells.length} / {cellState.length}
+              {ownerCells?.length || 0} / {cellState?.length || 0}
             </p>
           </div>
         </div>
