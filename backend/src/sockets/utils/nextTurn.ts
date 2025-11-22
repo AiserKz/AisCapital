@@ -1,5 +1,17 @@
+import { PlayerInRoom } from "@prisma/client";
+
 export const nextTurn = async (room: any, currentId: string) => {
-    const i = room.players.findIndex((p: any) => p.playerId === currentId);
-    const next = (i + 1) % room.players.length;
-    return room.players[next].playerId;
-}
+  const players = room.players;
+  const currentIndex = players.findIndex(
+    (p: PlayerInRoom) => p.playerId === currentId
+  );
+
+  let nextIndex = (currentIndex + 1) % players.length;
+  while (players[nextIndex].bankrupt) {
+    nextIndex = (nextIndex + 1) % players.length;
+    if (nextIndex === currentIndex) {
+      return null;
+    }
+  }
+  return players[nextIndex].playerId;
+};

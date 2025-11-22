@@ -26,6 +26,9 @@ export function CreateRoomDialog({
   const [error, setError] = useState<string>("");
 
   const handleCreate = async () => {
+    if (!roomName)
+      return setError("Поле названия комнаты не может быть пустым");
+    setLoading(true);
     await apiFetch
       .post("/api/rooms", {
         name: roomName,
@@ -36,7 +39,8 @@ export function CreateRoomDialog({
       .then((res) => {
         onCreateRoom(res.data.id);
       })
-      .catch((e) => setError(e.response.data.message));
+      .catch((e) => setError(e.response.data.message))
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -68,11 +72,11 @@ export function CreateRoomDialog({
               value={maxPlayers}
               onChange={(e) => setMaxPlayers(Number(e.target.value) || 4)}
             >
-              <option value={2}>2 игрока</option>
-              <option value={3}>3 игрока</option>
-              <option value={4}>4 игрока</option>
-              <option value={5}>5 игрока</option>
-              <option value={6}>6 игрока</option>
+              {[1, 2, 3, 4, 5, 6].map((player) => (
+                <option key={player} value={player}>
+                  {player} игрока
+                </option>
+              ))}
             </SelectInput>
           </div>
           <div className="flex items-center justify-between">

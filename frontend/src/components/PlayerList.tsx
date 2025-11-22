@@ -10,18 +10,18 @@ interface PlayerListProps {
   roomState: RoomStateType;
 }
 
+const getColorClass = (position: number) => {
+  const colors: Record<string, string> = {
+    1: "from-blue-500 to-blue-600",
+    2: "from-red-500 to-red-600",
+    3: "from-green-500 to-green-600",
+    4: "from-yellow-500 to-yellow-600",
+  };
+  return colors[position] || "from-slate-500 to-slate-600";
+};
+
 export function PlayerList({ roomState }: PlayerListProps) {
   const { user } = useApp();
-
-  const getColorClass = (position: number) => {
-    const colors: Record<string, string> = {
-      1: "from-blue-500 to-blue-600",
-      2: "from-red-500 to-red-600",
-      3: "from-green-500 to-green-600",
-      4: "from-yellow-500 to-yellow-600",
-    };
-    return colors[position] || "from-slate-500 to-slate-600";
-  };
 
   const currentRoom = roomState.currentRoom;
   const cellState = roomState.cellState;
@@ -59,13 +59,13 @@ export function PlayerList({ roomState }: PlayerListProps) {
               whileHover={{ scale: 1.02 }}
               className={`p-3 rounded-lg border-2 transition-all relative ${
                 _player.player.id === isCurrentTrunPlayerId
-                  ? "border-blue-500 bg-blue-500/10 shadow-md"
+                  ? "border-blue-500 bg-blue-500/10 shadow-md translate-x-2"
                   : "border-base-300 bg-base-200"
               }`}
             >
               <div
                 className={`flex items-start gap-3 ${
-                  isDisconnected ? "opacity-50" : ""
+                  isDisconnected || _player.bankrupt ? "opacity-50" : ""
                 }`}
               >
                 <div className="relative">

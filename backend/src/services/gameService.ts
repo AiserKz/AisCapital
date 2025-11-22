@@ -103,7 +103,7 @@ export const createRoom = async (data: {
         create: {
           playerId: data.hostId,
           position: 1,
-          isReady: true,
+          isReady: false,
         },
       },
     },

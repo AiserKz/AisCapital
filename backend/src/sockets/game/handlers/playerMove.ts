@@ -74,6 +74,11 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
         return;
       }
 
+      if (room.pendingChance) {
+        console.log(`🎲 Игрок ${username} ожидает карточку!`);
+        return;
+      }
+
       console.log(
         `🎲 Игрок ${username} бросил кубики: ${dice1} + ${dice2} = ${totalMove}`
       );
@@ -280,7 +285,33 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
             console.log(
               `❌ Игрок ${player.player.name} не имеет достаточно денег для оплаты ренты`
             );
-            await checkBankruptcy(io, room, playerId, rent);
+
+            const updateRoom = await checkBankruptcy(io, room, playerId, rent);
+
+            // Обновляем ссылку на игрока, так как состояние могло измениться
+            const updatedPlayer = updateRoom?.players.find(
+              (p) => p.playerId === playerId
+            );
+
+            // Если игрок обанкротился  дальше выполнять ничего нельзя
+            if (updatedPlayer?.bankrupt) {
+              console.log(
+                `💀 Игрок ${updatedPlayer.player.name} обанкротился, платеж не требуется`
+              );
+              sendRoomMessage(
+                io,
+                roomId,
+                playerId,
+                `💀 Игрок ${updatedPlayer.player.name} обанкротился и больше не может платить ренту`,
+                "EVENT"
+              );
+
+              await saveRoomToDB(room);
+              roomUpdate(io, roomId, room);
+              return; // ← выходим, не создаём счет и не отправляем RENT_REQUIRED
+            }
+
+            // Если игрок все ещё жив — отправляем запрос на оплату
             sendRoomMessage(
               io,
               roomId,
@@ -288,12 +319,14 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
               `❌ Игрок ${player.player.name} не имеет достаточно денег для оплаты ренты`,
               "EVENT"
             );
+
             const payment = {
               payerId: player.playerId,
               ownerId: owner.playerId,
               cellId: cell.id,
               rent,
             };
+
             room.currentPayment = payment;
             io.to(roomId).emit(GAME_EVENTS.RENT_REQUIRED, payment);
           } else {

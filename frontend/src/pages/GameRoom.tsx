@@ -26,6 +26,7 @@ import { useGameMessage } from "../utils/hook/useGameMessage";
 import { usePendingTimer } from "../utils/hook/usePendingTimer";
 import { Loading } from "../components/Loading";
 import { ErrorScreen } from "../components/Error";
+import Button from "../components/ui/button";
 
 export type RoomAction =
   | { type: "SET_ROOM"; payload: RoomDetailType }
@@ -241,16 +242,24 @@ export function GameRoom() {
             <div className="flex-col items-center justify-center space-y-3 min-w-lg">
               <h3 className="text-xl">Игра завершена! Победил 🎆</h3>
               <div className="flex space-x-2 items-center justify-center">
-                <img
-                  src={
-                    currentRoom.winner?.avatar ||
-                    "https://cdn.displate.com/artwork/270x380/2025-02-24/7f4304e7-bab6-4fe8-9ed9-b21790c11f5f.jpg"
-                  }
-                  alt={currentRoom.winner.name}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
+                {currentRoom.winner?.avatar ? (
+                  <img
+                    src={currentRoom.winner?.avatar}
+                    alt={currentRoom.winner.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center bg-linear-to-br bg-amber-300 from-amber-400 to-amber-600`}
+                  >
+                    <span className="text-white text-xs font-medium">
+                      {currentRoom.winner.name.slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 <p className="text-lg">{currentRoom.winner.name}</p>
               </div>
+              <Button onClick={handleLeave}>Вернуться на главную</Button>
             </div>
           </GameMessage>
         )}

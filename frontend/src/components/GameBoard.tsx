@@ -291,7 +291,9 @@ export function GameBoard({
                     key={player.id}
                     className={`w-6 h-6 rounded-full ${getPlayerColorClass(
                       userColor[player.position as keyof typeof userColor]
-                    )} border-2 border-white shadow-md flex items-center justify-center text-white text-xs`}
+                    )} border-2 border-white shadow-md flex items-center justify-center text-white text-xs ${
+                      player.bankrupt ? "hidden" : "animate-pulse"
+                    }`}
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 500 }}

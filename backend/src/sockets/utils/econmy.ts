@@ -57,10 +57,9 @@ export const checkBankruptcy = async (
     });
 
     // Освобождаем клетки
-    //   for (const c of ownedCells) {
-    //     c.ownerId = null;
-    //     c.mortgaged = false;
-    //   }
+    for (const c of ownedCells) {
+      cellState.splice(cellState.indexOf(c), 1);
+    }
 
     player.bankrupt = true;
     player.money = 0;
@@ -107,9 +106,11 @@ export const checkBankruptcy = async (
       }
     }
   }
+  room.cellState = cellState;
 
   await saveRoomToDB(room);
   roomUpdate(io, room.id, room);
+  return room;
 };
 
 export const buyCeil = async (io: Server, roomId: string, playerId: string) => {
@@ -141,10 +142,26 @@ export const buyCeil = async (io: Server, roomId: string, playerId: string) => {
       `❌ Игрок ${player.player.name} не имеет достаточно денег для покупки клетки ${targetCell.name}`
     );
 
-  const playerTrainCells = cellState.filter(
+  let updatedCellState = [...cellState];
+
+  const newCellState: CellState = {
+    id: cellPos,
+    ownerId: playerId,
+    ownerPosition: player.position || 0,
+    currentRent: targetCell.rent,
+    mortgaged: false,
+    baseRent: targetCell.rent || 0,
+    houses: 0,
+    hotels: 0,
+    housePrice: targetCell.housePrice || 50,
+    hotelPrice: targetCell.hotelPrice || 150,
+  };
+
+  updatedCellState.push(newCellState);
+
+  const playerTrainCells = updatedCellState.filter(
     (c) => trainCeil.includes(c.id) && c.ownerId === playerId
   );
-  let updatedCellState = [...cellState];
 
   // Обновляем ренты для поездов
   if (playerTrainCells.length > 0) {
@@ -166,21 +183,6 @@ export const buyCeil = async (io: Server, roomId: string, playerId: string) => {
       return cell;
     });
   }
-
-  const newCellState: CellState = {
-    id: cellPos,
-    ownerId: playerId,
-    ownerPosition: player.position || 0,
-    currentRent: targetCell.rent,
-    mortgaged: false,
-    baseRent: targetCell.rent || 0,
-    houses: 0,
-    hotels: 0,
-    housePrice: targetCell.housePrice || 50,
-    hotelPrice: targetCell.hotelPrice || 150,
-  };
-
-  updatedCellState.push(newCellState);
 
   room.cellState = updatedCellState;
 

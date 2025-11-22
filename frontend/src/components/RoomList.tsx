@@ -54,7 +54,7 @@ export function RoomList() {
   };
 
   const handleEnterRoom = (room: RoomType) => {
-    if (room.isPrivate) {
+    if (room.isPrivate && room.host.id !== user?.id) {
       setShowPasswordModal(true);
       setSelectedRoom(room);
       return;

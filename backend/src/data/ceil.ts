@@ -409,7 +409,7 @@ export const chanceCards: ChanceType[] = [
     type: "money",
     effect: (p, room) => {
       const otherPlayers = room.players.filter(
-        (player) => player.playerId !== p.playerId
+        (player) => player.playerId !== p.playerId && !player.bankrupt
       );
       p.money += otherPlayers.length * 50;
       otherPlayers.forEach((player) => (player.money -= 50));
@@ -433,7 +433,7 @@ export const chanceCards: ChanceType[] = [
     text: "💸 Все игроки платят банку по $20",
     type: "money",
     effect: (p, room) => {
-      room.players.forEach((player) => (player.money -= 20));
+      room.players.filter((p) => !p.bankrupt).forEach((p) => (p.money -= 20));
     },
   },
   {
@@ -483,7 +483,7 @@ export const chanceCards: ChanceType[] = [
     type: "move",
     effect: (p, room) => {
       const otherPlayers = room.players.filter(
-        (pl) => pl.playerId !== p.playerId
+        (pl) => pl.playerId !== p.playerId && !pl.bankrupt
       );
       if (!otherPlayers.length) return;
       const target =
@@ -495,26 +495,26 @@ export const chanceCards: ChanceType[] = [
   },
   {
     id: 15,
-    text: "⏳ Счастливая пауза: пропустите оплату ренты на 3 хода",
+    text: "⏳ Счастливая пауза: пропустите оплату ренты на 2 хода",
     type: "misc",
     effect: (p) => {
-      p.skipRentTurns = 3;
+      p.skipRentTurns = 2;
     },
   },
-  {
-    id: 16,
-    text: "💼 Получите бесплатный дом (если есть свободная клетка)",
-    type: "misc",
-    effect: (p, room) => {
-      const cellState = getCellState(room, 0).cellState.filter(
-        (c) => c.ownerId === p.playerId
-      );
-      if (!cellState.length) return;
-      const randomCell =
-        cellState[Math.floor(Math.random() * cellState.length)];
-      randomCell.ownerId = p.playerId;
-    },
-  },
+  // {
+  //   id: 16,
+  //   text: "💼 Получите бесплатный дом (если есть свободная клетка)",
+  //   type: "misc",
+  //   effect: (p, room) => {
+  //     const cellState = getCellState(room, 0).cellState.filter(
+  //       (c) => c.ownerId === p.playerId
+  //     );
+  //     if (!cellState.length) return;
+  //     const randomCell =
+  //       cellState[Math.floor(Math.random() * cellState.length)];
+  //     randomCell.ownerId = p.playerId;
+  //   },
+  // },
   // {
   //   id: 17,
   //   text: "🎲 Бросьте кубик ещё раз",
@@ -529,7 +529,7 @@ export const chanceCards: ChanceType[] = [
     type: "money",
     effect: (p, room) => {
       const otherPlayers = room.players.filter(
-        (pl) => pl.playerId !== p.playerId
+        (pl) => pl.playerId !== p.playerId && !pl.bankrupt
       );
       p.money += otherPlayers.length * 10;
       otherPlayers.forEach((pl) => (pl.money -= 10));
