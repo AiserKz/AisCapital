@@ -7,13 +7,14 @@ import {
 import { safeSocket } from "../../utils/safeSocket.js";
 import { GAME_EVENTS } from "../events/gameEvents.js";
 import {
-  calculateRent,
+  calculateBuildingBonus,
   findRoomAndPlayer,
   getCellState,
   getUserData,
   roomUpdate,
 } from "../../utils/roomUtils.js";
 import { trainCeil } from "../../../data/ceil.js";
+import { canBuildHouse } from "../services/monopolyService.js";
 
 export const handleBuyHouse = async (io: Server, socket: Socket) => {
   socket.on(
@@ -31,10 +32,7 @@ export const handleBuyHouse = async (io: Server, socket: Socket) => {
         const { cellState, cell } = await getCellState(room, cellId);
 
         if (!cell) return console.log(`Эта клетка никому не принадлежит`);
-        if (trainCeil.includes(cell.id))
-          return console.log(`⭕ Для Клетки нельзя купить дом/отель`);
-        if (cell.ownerId !== playerId)
-          return console.log(`⭕ Вы не можете купить дом/отель в чужую клетку`);
+
         if (type === "house" && cell.houses >= 4)
           return console.log(
             `⭕ Клетка уже имеет максимальное количество домов`
@@ -52,21 +50,23 @@ export const handleBuyHouse = async (io: Server, socket: Socket) => {
         if (player.money < (houseCost || 50))
           return console.log(`⭕ Недостаточно денег для покупки дома/отеля`);
 
-        player.money -= houseCost || 50;
-        if (type === "house") cell.houses++;
-        else cell.hotels++;
+        if (canBuildHouse(playerId, cellId, cellState)) {
+          player.money -= houseCost || 50;
+          if (type === "house") cell.houses++;
+          else cell.hotels++;
 
-        cell.currentRent = calculateRent(cell);
+          cell.currentRent = (cell.baseRent ?? 50) + calculateBuildingBonus(cell);
 
-        const updateCellState = cellState.map((c) =>
-          c.id === cellId ? cell : c
-        );
-        room.cellState = updateCellState;
+          const updateCellState = cellState.map((c) =>
+            c.id === cellId ? cell : c
+          );
+          room.cellState = updateCellState;
 
-        await saveRoomToDB(room);
-        console.log("Пользователь покупает дом/отель", playerId, cellId, type);
+          await saveRoomToDB(room);
+          console.log("Пользователь покупает дом/отель", playerId, cellId, type);
 
-        roomUpdate(io, roomId, room);
+          roomUpdate(io, roomId, room);
+        }
       }
     )
   );

@@ -22,6 +22,16 @@ export const GAME_EVENTS = {
   PENDING_ACTION: "pending_action",
   TURN_ENDED: "turn_ended",
   ROOM_MESSAGE: "room_message",
+  // === СОБЫТИЯ ОБМЕНОВ ===
+  TRADE_OFFER: "trade_offer",
+  TRADE_ACCEPT: "trade_accept",
+  TRADE_REJECT: "trade_reject",
+  TRADE_CANCEL: "trade_cancel",
+  TRADE_UPDATED: "trade_updated",
+  // === СОБЫТИЯ АУКЦИОНОВ ===
+  AUCTION_START: "auction_start",
+  AUCTION_BID: "auction_bid",
+  AUCTION_ENDED: "auction_ended",
 } as const;
 
 export type GameEventKeys = keyof typeof GAME_EVENTS;

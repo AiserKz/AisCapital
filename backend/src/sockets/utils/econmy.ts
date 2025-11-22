@@ -113,11 +113,20 @@ export const checkBankruptcy = async (
   return room;
 };
 
-export const buyCeil = async (io: Server, roomId: string, playerId: string) => {
+/**
+ * Покупка клетки игроком
+ * Обновлена для поддержки монополий и автоматического пересчета рент
+ * @param io - Socket.IO сервер
+ * @param roomId - ID комнаты
+ * @param playerId - ID игрока
+ */
+export const buyCell = async (io: Server, roomId: string, playerId: string) => {
   const { room, player } = await findRoomAndPlayer(roomId, playerId);
 
   const cellPos = player.positionOnBoard;
   const targetCell = cells.find((c) => c.id === cellPos) || null;
+
+  // === ПРОВЕРКА ВОЗМОЖНОСТИ ПОКУПКИ ===
   if (
     !targetCell ||
     targetCell.isBuying === false ||
@@ -129,14 +138,17 @@ export const buyCeil = async (io: Server, roomId: string, playerId: string) => {
 
   const { cellState, cell } = getCellState(room, cellPos);
 
+  // Проверка, не куплена ли клетка уже
   if (cell)
     return console.log(
-      `❌ Клетка ${targetCell.name} уже принадлежит ${player.player.name}`
+      `❌ Клетка ${targetCell.name} уже принадлежит другому игроку`
     );
 
+  // Игрок в тюрьме не может покупать
   if (player.jailed)
     return console.log(`⭕ Игрок ${player.player.name} в тюрьме!`);
 
+  // Проверка достаточности денег
   if (player.money < targetCell.price)
     return console.log(
       `❌ Игрок ${player.player.name} не имеет достаточно денег для покупки клетки ${targetCell.name}`
@@ -144,11 +156,12 @@ export const buyCeil = async (io: Server, roomId: string, playerId: string) => {
 
   let updatedCellState = [...cellState];
 
+  // === СОЗДАНИЕ НОВОЙ КЛЕТКИ В СОСТОЯНИИ ===
   const newCellState: CellState = {
     id: cellPos,
     ownerId: playerId,
     ownerPosition: player.position || 0,
-    currentRent: targetCell.rent,
+    currentRent: targetCell.rent || 0,
     mortgaged: false,
     baseRent: targetCell.rent || 0,
     houses: 0,
@@ -159,11 +172,13 @@ export const buyCeil = async (io: Server, roomId: string, playerId: string) => {
 
   updatedCellState.push(newCellState);
 
+  // === ОБРАБОТКА ЖЕЛЕЗНЫХ ДОРОГ ===
+  // Получаем все железные дороги игрока
   const playerTrainCells = updatedCellState.filter(
     (c) => trainCeil.includes(c.id) && c.ownerId === playerId
   );
 
-  // Обновляем ренты для поездов
+  // Обновляем ренты для поездов в зависимости от количества
   if (playerTrainCells.length > 0) {
     const rentMultiplierMap: Record<number, number> = {
       1: 1,
@@ -184,10 +199,54 @@ export const buyCeil = async (io: Server, roomId: string, playerId: string) => {
     });
   }
 
-  room.cellState = updatedCellState;
+  // === ПРОВЕРКА И ОБРАБОТКА МОНОПОЛИЙ ===
+  // Импортируем функции из monopolyService
+  const {
+    getCellColor,
+    hasMonopoly,
+    calculateMonopolyRent
+  } = await import("../game/services/monopolyService.js");
 
+  const cellColor = getCellColor(cellPos);
+
+  // Если клетка имеет цвет (не железная дорога, не утилита)
+  if (cellColor) {
+    // Проверяем, получил ли игрок монополию после этой покупки
+    const playerHasMonopoly = hasMonopoly(playerId, cellColor, updatedCellState);
+
+    if (playerHasMonopoly) {
+      console.log(`🎯 Игрок ${player.player.name} получил монополию на ${cellColor}!`);
+
+      // Обновляем ренты для всех клеток этого цвета
+      updatedCellState = updatedCellState.map((cell) => {
+        const cellColorCheck = getCellColor(cell.id);
+
+        // Если клетка того же цвета и принадлежит игроку
+        if (cellColorCheck === cellColor && cell.ownerId === playerId) {
+          const baseRent = cell.baseRent || 0;
+          // Рассчитываем новую ренту с учетом монополии
+          const newRent = calculateMonopolyRent(cell, updatedCellState, baseRent);
+          return { ...cell, baseRent: newRent, currentRent: newRent };
+        }
+
+        return cell;
+      });
+
+      // Уведомляем всех о монополии
+      sendRoomMessage(
+        io,
+        roomId,
+        playerId,
+        `🎯 Игрок ${player.player.name} получил монополию на ${cellColor}! Рента удвоена!`,
+        "EVENT"
+      );
+    }
+  }
+
+  // === СОХРАНЕНИЕ И УВЕДОМЛЕНИЕ ===
+  room.cellState = updatedCellState;
   player.money -= targetCell.price;
-  // Сохраняем и уведомляем всех
+
   await saveRoomToDB(room);
   console.log(`🏠 Игрок ${player.player.name} купил клетку ${targetCell.name}`);
   sendRoomMessage(

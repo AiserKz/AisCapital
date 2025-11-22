@@ -3,6 +3,7 @@ import { API_BASE_URL } from "../../config";
 import { useEffect, useState } from "react";
 import type { RoomAction } from "../../pages/GameRoom";
 import { refreshAccessToken } from "../apiFetch";
+import type { AuctionStateType, AuctionType } from "../../types/types";
 
 const connectSocket = () => {
   socket.on("reconnect_attempt", () => {
@@ -36,11 +37,12 @@ const socket = io(API_BASE_URL, {
     token: localStorage.getItem("accessToken"),
   },
 });
-const GAME_EVENTS = {
+export const GAME_EVENTS = {
   JOIN_ROOM: "join_room",
   LEAVE_ROOM: "leave_room",
   PLAYER_MOVE: "player_move",
   PAY_RENT: "pay_rent",
+  BUY_CELL: "buy_cell",
   MORTAGE_CELL: "mortage_cell",
   UN_MORTAGE_CELL: "un-mortage_cell",
   ROOM_UPDATE: "room_updated",
@@ -59,6 +61,16 @@ const GAME_EVENTS = {
   PENDING_ACTION: "pending_action",
   TURN_ENDED: "turn_ended",
   ROOM_MESSAGE: "room_message",
+  // === СОБЫТИЯ ОБМЕНОВ ===
+  TRADE_OFFER: "trade_offer",
+  TRADE_ACCEPT: "trade_accept",
+  TRADE_REJECT: "trade_reject",
+  TRADE_CANCEL: "trade_cancel",
+  TRADE_UPDATED: "trade_updated",
+  // === СОБЫТИЯ АУКЦИОНОВ ===
+  AUCTION_START: "auction_start",
+  AUCTION_BID: "auction_bid",
+  AUCTION_ENDED: "auction_ended",
 } as const;
 
 export default function useGameSocket(
@@ -75,7 +87,10 @@ export default function useGameSocket(
     text: string;
     username: string;
     time: number;
-  }) => void
+  }) => void,
+  auctionStart?: (auction: AuctionType | null) => void,
+  setAuctionState?: (auction: AuctionStateType | null) => void,
+
 ) {
   const [hasJoined, setHasJoinedRef] = useState(false);
 
@@ -87,9 +102,9 @@ export default function useGameSocket(
     console.log("Подключение к комнате");
     socket.emit(GAME_EVENTS.JOIN_ROOM, roomId);
 
-    socket.on(GAME_EVENTS.PLAYER_JOINED, (playerInRoom) => {});
+    socket.on(GAME_EVENTS.PLAYER_JOINED, (playerInRoom) => { });
 
-    socket.on(GAME_EVENTS.PLAYER_LEFT, (playerId) => {});
+    socket.on(GAME_EVENTS.PLAYER_LEFT, (playerId) => { });
 
     socket.on(GAME_EVENTS.ROOM_UPDATE, (room) => {
       console.log(GAME_EVENTS.ROOM_UPDATE, room);
@@ -128,6 +143,20 @@ export default function useGameSocket(
       console.log(GAME_EVENTS.ROOM_MESSAGE, message);
       chatMessage?.(message);
     });
+
+    socket.on(GAME_EVENTS.AUCTION_START, (auction: AuctionType) => {
+      auctionStart?.(auction);
+    });
+
+    socket.on(GAME_EVENTS.AUCTION_BID, (state: AuctionStateType) => {
+      setAuctionState?.(state);
+    });
+
+    socket.on(GAME_EVENTS.AUCTION_ENDED, (auctionId, winnerId, winnerName, finalBid) => {
+      console.log(GAME_EVENTS.AUCTION_ENDED, auctionId, winnerId, winnerName, finalBid);
+      auctionStart?.(null);
+      setAuctionState?.(null);
+    })
 
     return () => {
       socket.emit(GAME_EVENTS.LEAVE_ROOM, roomId);
@@ -191,6 +220,34 @@ export default function useGameSocket(
     socket.emit(GAME_EVENTS.ROOM_MESSAGE, { roomId, text });
   };
 
+  // const handleTradeOffer = (offer: TradeOffer) => {
+  //   socket.emit(GAME_EVENTS.TRADE_OFFER, { roomId, offer });
+  // };
+
+  const handleTradeAccept = (offerId: string) => {
+    socket.emit(GAME_EVENTS.TRADE_ACCEPT, { roomId, offerId });
+  };
+
+  const handleTradeReject = (offerId: string) => {
+    socket.emit(GAME_EVENTS.TRADE_REJECT, { roomId, offerId });
+  };
+
+  const handleTradeCancel = (offerId: string) => {
+    socket.emit(GAME_EVENTS.TRADE_CANCEL, { roomId, offerId });
+  };
+
+  // const handleTradeUpdated = (offer: TradeOffer) => {
+  //   socket.emit(GAME_EVENTS.TRADE_UPDATED, { roomId, offer });
+  // };
+
+  const handleAuctionStart = () => {
+    socket.emit(GAME_EVENTS.AUCTION_START, { roomId });
+  };
+
+  const handleAuctionBid = (auctionId: string, amount: number) => {
+    socket.emit(GAME_EVENTS.AUCTION_BID, { roomId, auctionId, amount });
+  };
+
   return {
     movePlayer,
     buyCell,
@@ -203,5 +260,7 @@ export default function useGameSocket(
     handleIsReady,
     skipTurn,
     sendMessage,
+    handleAuctionStart,
+    handleAuctionBid
   };
 }

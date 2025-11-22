@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Gamepad2, Plus } from "lucide-react";
+import { Gamepad2, Plus, Trophy, Activity } from "lucide-react";
 import Button from "../ui/button";
 import { PlayerState } from "../PlayerState";
 import { RoomList } from "../RoomList";
@@ -20,58 +20,82 @@ export default function Lobby() {
   }, []);
 
   return (
-    <div className="container mx-auto flex flex-col lg:flex-row gap-6">
+    <div className="container mx-auto px-4 py-6 max-w-7xl">
       <CreateRoomDialog
         open={isCreateRoomModalOpen}
         onOpenChange={setIsCreateRoomModalOpen}
         onCreateRoom={(roomId: string) => navigate(`/room/${roomId}`)}
       />
-      {/* Левая колонка статы и лидерборд */}
-      <div className="flex flex-col gap-6 lg:w-1/3">
+
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Левая колонка: Статистика и Лидерборд */}
+        <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-6 shrink-0">
+          <motion.div
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-6"
+          >
+            <div className="bg-base-100 rounded-xl shadow-sm border border-base-200 overflow-hidden">
+              <div className="p-4 border-b border-base-200 bg-base-200/50 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-base-content">Ваша статистика</h3>
+              </div>
+              <div className="p-4">
+                <PlayerState />
+              </div>
+            </div>
+
+            <div className="bg-base-100 rounded-xl shadow-sm border border-base-200 overflow-hidden">
+              <div className="p-4 border-b border-base-200 bg-base-200/50 flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-warning" />
+                <h3 className="font-semibold text-base-content">Топ игроков</h3>
+              </div>
+              <div className="p-4">
+                <MiniLeaderboard onShowFull={() => navigate("/leaderboard")} />
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Правая колонка: Список комнат */}
         <motion.div
-          initial={{ x: -40, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="flex-1 min-w-0"
         >
-          <PlayerState />
-        </motion.div>
-        <motion.div
-          initial={{ x: -40, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.4 }}
-        >
-          <MiniLeaderboard onShowFull={() => navigate("/leaderboard")} />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Gamepad2 className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-base-content">
+                  Игровые комнаты
+                </h2>
+                <p className="text-sm text-base-content/60">
+                  Присоединяйтесь к игре или создайте свою
+                </p>
+              </div>
+            </div>
+            <Button
+              className="gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all"
+              onClick={() => setIsCreateRoomModalOpen(true)}
+              size="large"
+            >
+              <Plus className="w-5 h-5" />
+              Создать комнату
+            </Button>
+          </div>
+
+          <div className="bg-base-100 rounded-2xl shadow-sm border border-base-200 p-1 min-h-[500px]">
+            <div className="h-full overflow-y-auto p-4 custom-scrollbar">
+              <RoomList />
+            </div>
+          </div>
         </motion.div>
       </div>
-
-      {/* Правая колонка список комнат */}
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        className="flex-1 flex flex-col"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Gamepad2 className="w-5 h-5 text-base-content/60" />
-            <h2 className="text-base-content/80 font-medium">
-              Игровые комнаты
-            </h2>
-          </div>
-          <Button
-            className="gap-2"
-            onClick={() => setIsCreateRoomModalOpen(true)}
-          >
-            <Plus className="w-4 h-4" />
-            Создать комнату
-          </Button>
-        </div>
-
-        {/* Контент справа список комнат */}
-        <div className=" overflow-y-auto rounded-box bg-base-200 p-4">
-          <RoomList />
-        </div>
-      </motion.div>
     </div>
   );
 }

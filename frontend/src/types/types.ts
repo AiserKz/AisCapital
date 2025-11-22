@@ -144,6 +144,21 @@ interface RoomStateType {
   pendingChance: PendingChanceType | null;
 }
 
+interface AuctionType {
+  auctionId: string;
+  cellId: number;
+  currentBid: number;
+  currentBidder: string | null;
+  endsAt: number;
+}
+
+interface AuctionStateType {
+  auctionId: string;
+  playerId: string;
+  amount: number;
+  playerName: string;
+}
+
 export type {
   AppContextType,
   UserType,
@@ -156,4 +171,6 @@ export type {
   CurrentPaymentType,
   PendingChanceType,
   RoomStateType,
+  AuctionType,
+  AuctionStateType,
 };

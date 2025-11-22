@@ -9,7 +9,7 @@ import {
   roomUpdate,
 } from "../../utils/roomUtils.js";
 import { nextTurn } from "../../utils/nextTurn.js";
-import { buyCeil } from "../../utils/econmy.js";
+import { buyCell } from "../../utils/econmy.js";
 
 export const handlePendingAction = async (io: Server, socket: Socket) => {
   socket.on(
@@ -28,7 +28,7 @@ export const handlePendingAction = async (io: Server, socket: Socket) => {
       }
 
       if (buy) {
-        await buyCeil(io, roomId, playerId);
+        await buyCell(io, roomId, playerId);
         return;
       } else {
         console.log(`👤 Пользователь ${username} завершил ход`);

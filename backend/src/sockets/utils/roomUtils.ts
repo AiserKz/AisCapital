@@ -51,23 +51,24 @@ export const getCellState = (
   return { cellState, cell };
 };
 
-export const calculateRent = (cell: CellState): number => {
+export const calculateBuildingBonus = (cell: CellState): number => {
   const base = cell.baseRent ?? 100;
 
   const maxHotels = 3;
+  let bonus = 0;
 
-  let rent = base;
-
+  // Бонус от домов
   if (cell.houses && cell.houses > 0) {
-    rent += Math.floor(base * 0.7 * cell.houses);
+    bonus += Math.floor(base * 0.4 * cell.houses);
   }
 
+  // Бонус от отелей
   if (cell.hotels && cell.hotels > 0) {
     const actualHotels = Math.min(cell.hotels, maxHotels);
-    rent += Math.floor(base * 0.9 * actualHotels);
+    bonus += Math.floor(base * 0.5 * actualHotels);
   }
 
-  return Math.floor(rent);
+  return bonus;
 };
 
 export const getUserData = (socket: Socket) => {

@@ -14,6 +14,16 @@ import { GAME_EVENTS } from "../events/gameEvents.js";
 import { cells, chanceCards } from "../../../data/ceil.js";
 import { Ceil } from "../../../types/types.js";
 import { checkBankruptcy } from "../../utils/econmy.js";
+import {
+  PENDING_ACTION_TIMEOUT,
+  START_BONUS,
+  TAX_BASE,
+  TAX_PERCENTAGE,
+  MAX_COMBO_FOR_JAIL,
+  TOTAL_CELLS,
+  CORNER_CELLS,
+} from "../../../config/gameConstants.js";
+import { calculateMonopolyRent } from "../services/monopolyService.js";
 
 const timers: Record<string, NodeJS.Timeout> = {};
 
@@ -22,6 +32,8 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
     GAME_EVENTS.PLAYER_MOVE,
     safeSocket(async (data: any) => {
       const { roomId } = data;
+
+      // === БРОСОК КОСТЕЙ ===
       const dice1 = Math.floor(Math.random() * 6) + 1;
       const dice2 = Math.floor(Math.random() * 6) + 1;
       const totalMove = dice1 + dice2;
@@ -29,6 +41,7 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
 
       const { room, player } = await findRoomAndPlayer(roomId, playerId);
 
+      // === ПРОВЕРКА СТАТУСА ИГРЫ ===
       if (room.status === "WAITING") {
         console.log(
           `🎲 Игра в комнате ${room.name} еще не началась или же уже окончена!`
@@ -83,10 +96,11 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
         `🎲 Игрок ${username} бросил кубики: ${dice1} + ${dice2} = ${totalMove}`
       );
 
-      if (room.comboTurn >= 3) {
+      // === ПРОВЕРКА НА ТРОЙНОЙ ДУБЛЬ (АВТОМАТИЧЕСКОЕ ПОПАДАНИЕ В ТЮРЬМУ) ===
+      if (room.comboTurn >= MAX_COMBO_FOR_JAIL) {
         room.comboTurn = 0;
         player.jailed = true;
-        player.positionOnBoard = 10;
+        player.positionOnBoard = CORNER_CELLS.JAIL;
         sendRoomMessage(
           io,
           roomId,
@@ -103,26 +117,28 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
 
       io.to(roomId).emit(GAME_EVENTS.PLAYER_HAS_MOVED, dice1, dice2);
 
-      // новое положение  с учётом цикла на 40 клеток
-      const totalCells = cells.length;
+      // === РАСЧЕТ НОВОГО ПОЛОЖЕНИЯ НА ДОСКЕ ===
+      // Новое положение с учётом цикла на 40 клеток
+      const newPosition = (player.positionOnBoard + totalMove) % TOTAL_CELLS;
 
-      const newPosition = (player.positionOnBoard + totalMove) % totalCells;
-
-      // если пересекли старт бонус
-      if (player.positionOnBoard + totalMove >= totalCells) {
-        player.money += 200;
-        console.log(`💰 Игрок ${username} прошёл через старт и получил $200`);
+      // === БОНУС ЗА ПРОХОЖДЕНИЕ СТАРТА ===
+      // Если игрок прошел через клетку «Старт» (id=0), начисляем бонус
+      if (player.positionOnBoard + totalMove >= TOTAL_CELLS) {
+        player.money += START_BONUS;
+        console.log(`💰 Игрок ${username} прошёл через старт и получил $${START_BONUS}`);
         sendRoomMessage(
           io,
           roomId,
           playerId,
-          `💰 Игрок ${username} прошёл через старт и получил $200`,
+          `💰 Игрок ${username} прошёл через старт и получил $${START_BONUS}`,
           "EVENT"
         );
       }
 
       player.positionOnBoard = newPosition;
 
+      // === ОБРАБОТКА ДУБЛЯ ===
+      // Если кости одинаковые (дубль), игрок ходит еще раз
       if (dice1 !== dice2) {
         sendRoomMessage(
           io,
@@ -131,7 +147,6 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           `🎲 Игрок ${username} бросил кубики: \n ${dice1} + ${dice2} = ${totalMove}`,
           "EVENT"
         );
-        // room.currentTurnPlayerId = await nextTurn(room, playerId);
         room.comboTurn = 0;
       } else {
         room.comboTurn += 1;
@@ -144,10 +159,13 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
         );
       }
 
+      // === ОБРАБОТКА ТИПА КЛЕТКИ ===
       const currentCell = cells.find((c) => c.id === newPosition);
       switch (currentCell?.type.toUpperCase() as Ceil["type"]) {
+        // === КЛЕТКА НАЛОГА ===
         case "TAX":
-          const taxAmount = Math.floor(player.money * 0.1) + 50;
+          // Налог = базовая сумма + процент от денег игрока
+          const taxAmount = Math.floor(player.money * TAX_PERCENTAGE) + TAX_BASE;
           player.money -= taxAmount;
           console.log(`💸 Игрок ${username} заплатил налог $${taxAmount}`);
           sendRoomMessage(
@@ -158,13 +176,16 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
             "EVENT"
           );
           break;
+        // === КЛЕТКА ШАНСА ===
         case "CHANCE":
+          // Выбираем случайную карточку шанса
           const randomCard =
             chanceCards[Math.floor(Math.random() * chanceCards.length)];
           console.log(
             `🎴 Игрок ${username} взял карточку "Шанс" ${randomCard.text}`
           );
 
+          // Сохраняем карточку в ожидании подтверждения от клиента
           room.pendingChance = {
             playerId,
             cardId: randomCard.id,
@@ -178,24 +199,28 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
             type: "CHANCE",
           });
           break;
+        // === УГЛОВАЯ КЛЕТКА ===
         case "CORNER":
-          if (currentCell?.id === 30) {
+          // Клетка "В тюрьму" (id=30)
+          if (currentCell?.id === CORNER_CELLS.GO_TO_JAIL) {
             if (player.hasJailFreeCard) {
+              // Игрок использует карту "Выход из тюрьмы"
               player.hasJailFreeCard = false;
 
               console.log(
-                `🚓 Игрок ${username} попал в тюрьму, но у него есть карты выпуска!`
+                `🚓 Игрок ${username} попал в тюрьму, но у него есть карта выпуска!`
               );
               sendRoomMessage(
                 io,
                 roomId,
                 playerId,
-                `🚓 Игрок ${username} попал в тюрьму, но у него есть карты выпуска!`,
+                `🚓 Игрок ${username} попал в тюрьму, но у него есть карта выпуска!`,
                 "EVENT"
               );
             } else {
+              // Отправляем игрока в тюрьму
               player.jailed = true;
-              player.positionOnBoard = 10;
+              player.positionOnBoard = CORNER_CELLS.JAIL;
               console.log(`🚓 Игрок ${username} попал в тюрьму`);
               sendRoomMessage(
                 io,
@@ -209,32 +234,35 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           break;
       }
 
-      if (currentCell && currentCell?.id !== 30) {
+      // === ТАЙМЕР НА ПРИНЯТИЕ РЕШЕНИЯ (КУПИТЬ ИЛИ ПРОПУСТИТЬ) ===
+      // Не запускаем таймер для клетки "В тюрьму"
+      if (currentCell && currentCell?.id !== CORNER_CELLS.GO_TO_JAIL) {
         const timerKey = `${roomId}-${playerId}`;
         if (timers[timerKey]) {
           clearTimeout(timers[timerKey]);
           delete timers[timerKey];
         }
 
-        const TIMER = 30000;
-        console.log("Игрок попал на клетку запускаю таймер");
+        console.log("Игрок попал на клетку, запускаю таймер на принятие решения");
         player.pendingAction = {
           type: "BUY_OR_PAY",
           cellId: currentCell.id,
-          expiresAt: Date.now() + TIMER,
+          expiresAt: Date.now() + PENDING_ACTION_TIMEOUT,
         };
         io.to(roomId).emit(GAME_EVENTS.PENDING_ACTION, {
           playerId,
           action: player.pendingAction,
         });
 
+        // Таймер автоматически завершает ход, если игрок не принял решение
         timers[timerKey] = setTimeout(async () => {
-          // получаем актуальные данные игрока из комнаты на момент срабатывания таймера
+          // Получаем актуальные данные игрока из комнаты на момент срабатывания таймера
           const { room, player } = await findRoomAndPlayer(roomId, playerId);
           if (isBuyOrPayAction(player.pendingAction)) {
-            console.log(`💸 У игрока ${username} закончилось время`);
+            console.log(`💸 У игрока ${username} закончилось время на принятие решения`);
             player.pendingAction = null;
 
+            // Передаем ход следующему игроку (если не был дубль)
             if (dice1 !== dice2 && !player.isFrozen) {
               room.currentTurnPlayerId = await nextTurn(room, playerId);
             }
@@ -244,19 +272,22 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
             roomUpdate(io, roomId, room);
           }
           delete timers[timerKey];
-        }, TIMER);
+        }, PENDING_ACTION_TIMEOUT);
       } else {
         room.currentTurnPlayerId = await nextTurn(room, playerId);
       }
 
+      // === ПРОВЕРКА НА ОПЛАТУ РЕНТЫ ===
       const { cellState, cell } = getCellState(room, newPosition);
 
+      // Если клетка принадлежит другому игроку и не заложена
       if (
         cell &&
         cell.ownerId &&
         cell.ownerId !== playerId &&
         !cell.mortgaged
       ) {
+        // Проверка на карточку "Пропуск ренты"
         if (player.skipRentTurns && player.skipRentTurns > 0) {
           player.skipRentTurns -= 1;
           console.log(
@@ -274,12 +305,16 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           return;
         }
 
-        const rent = cell.currentRent || 0;
+        // === РАСЧЕТ РЕНТЫ С УЧЕТОМ МОНОПОЛИИ ===
+        // Используем новый сервис для расчета ренты с бонусом за монополию
+        const baseRent = cell.currentRent || cell.baseRent || 0;
+        const rent = calculateMonopolyRent(cell, cellState, baseRent);
         const owner = room.players.find((p) => p.playerId === cell.ownerId);
 
+        // Владелец получает ренту только если не в тюрьме
         if (owner && !owner.jailed) {
           console.log(
-            `💸 Игрок ${player.player.name} должен заплатить ${rent}$ игроку ${owner.playerId}`
+            `💸 Игрок ${player.player.name} должен заплатить ${rent}$ игроку ${owner.player.name}`
           );
           if (player.money < rent) {
             console.log(

@@ -14,6 +14,8 @@ import type {
   RoomDetailType,
   PendingChanceType,
   RoomStateType,
+  AuctionType,
+  AuctionStateType,
 } from "../types/types";
 import { useApp } from "../context/AppContext";
 import useGameSocket from "../utils/hook/useGameSocket";
@@ -27,6 +29,7 @@ import { usePendingTimer } from "../utils/hook/usePendingTimer";
 import { Loading } from "../components/Loading";
 import { ErrorScreen } from "../components/Error";
 import Button from "../components/ui/button";
+import { CurrentAuction } from "../components/gameRoom/CurrentAuction";
 
 export type RoomAction =
   | { type: "SET_ROOM"; payload: RoomDetailType }
@@ -95,12 +98,19 @@ export function GameRoom() {
     clearMessage,
   } = useGameMessage(user?.id);
 
+  const [auction, setAuction] = useState<AuctionType | null>(null);
+  const [auctionState, setAuctionState] = useState<AuctionStateType | null>(null);
+
   const roomClosed = useCallback((message: string) => {
     toast.error(message);
     navigate("/");
   }, []);
 
   const { timer, startTimer } = usePendingTimer();
+
+  const auctionStart = useCallback((auction: AuctionType | null) => {
+    setAuction(auction);
+  }, []);
 
   const {
     movePlayer,
@@ -114,6 +124,8 @@ export function GameRoom() {
     handleIsReady,
     skipTurn,
     sendMessage,
+    handleAuctionStart,
+    handleAuctionBid
   } = useGameSocket(
     roomId,
     user?.id,
@@ -122,7 +134,9 @@ export function GameRoom() {
     onGameMessage,
     roomClosed,
     startTimer,
-    addChatMessage
+    addChatMessage,
+    auctionStart,
+    setAuctionState
   );
 
   useEffect(() => {
@@ -199,7 +213,7 @@ export function GameRoom() {
     currentUser &&
     (currentCell?.price || 10) <= currentUser?.money;
 
-  console.log("Перерендер страницы");
+  // console.log("Перерендер страницы");
 
   return (
     <div className="min-h-screen">
@@ -219,11 +233,10 @@ export function GameRoom() {
       <AnimatePresence mode="wait">
         {roomState.pendingChance && (
           <GameMessageEvent
-            title={`Шанс: ${
-              roomState.currentRoom.players.find(
-                (p) => p.playerId === roomState.pendingChance?.playerId
-              )?.player.name
-            }`}
+            title={`Шанс: ${roomState.currentRoom.players.find(
+              (p) => p.playerId === roomState.pendingChance?.playerId
+            )?.player.name
+              }`}
             description={roomState.pendingChance.text}
             isShowEvent={
               roomState.pendingChance.playerId === currentUser?.playerId
@@ -236,6 +249,8 @@ export function GameRoom() {
         {!roomState.pendingChance && message && !roomState.currentPayment && (
           <GameMessage message={message} onClose={clearMessage} />
         )}
+
+
 
         {currentRoom.winner && (
           <GameMessage>
@@ -264,6 +279,15 @@ export function GameRoom() {
           </GameMessage>
         )}
       </AnimatePresence>
+
+      {auction && (
+        <CurrentAuction
+          auction={auction}
+          auctionState={auctionState}
+          onBid={handleAuctionBid}
+          onClose={() => setAuction(null)}
+        />
+      )}
 
       {/* Главное содержимое */}
       <div className="p-6 mx-auto">
@@ -318,6 +342,7 @@ export function GameRoom() {
                 handleJailAction={handleJailAction}
                 handleReady={handleIsReady}
                 timer={timer}
+                handleAuction={handleAuctionStart}
               />
             )}
             <GameLog logs={logs} />

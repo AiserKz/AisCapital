@@ -316,3 +316,5 @@ export const cells: Ceil[] = [
     hotelPrice: 250,
   },
 ];
+
+

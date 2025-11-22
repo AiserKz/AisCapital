@@ -24,6 +24,8 @@ import type {
 } from "../types/types";
 import { cells } from "../test/data";
 import { useApp } from "../context/AppContext";
+import { RAILROAD_CELLS } from "../config/gameConstants";
+import { canBuildHouse, hasMonopoly } from "../utils/monopolyService";
 
 interface GameBoardProps {
   roomState: RoomStateType;
@@ -43,7 +45,6 @@ const userColor = {
   4: "yellow",
 };
 
-const trainCeil = [5, 15, 25, 35];
 
 const getColorClass = (color: string) => {
   const colors: Record<string, string> = {
@@ -132,24 +133,22 @@ export function GameBoard({
       const spanClass = isCorner
         ? "col-span-2 row-span-2"
         : isSide
-        ? "col-span-2 row-span-1"
-        : "col-span-1 row-span-2";
+          ? "col-span-2 row-span-1"
+          : "col-span-1 row-span-2";
 
       const contentClass = isSide
         ? `flex flex-row-reverse grow items-center text-left mr-4`
-        : `flex flex-col grow items-center text-center py-3 ${
-            isCorner
-              ? "justify-center"
-              : position === "top"
-              ? "justify-end"
-              : "justify-start"
-          }`;
+        : `flex flex-col grow items-center text-center py-3 ${isCorner
+          ? "justify-center"
+          : position === "top"
+            ? "justify-end"
+            : "justify-start"
+        }`;
 
       const nameClass = isSide
         ? `block font-medium leading-tight tracking-tight truncate text-base-content text-sm sm:text-[0.9rem] transform origin-center`
-        : `block font-medium leading-tight tracking-tight truncate  max-w-[90%] text-base-content ${
-            isCorner ? "text-lg" : "text-sm sm:text-[0.8rem]"
-          }`;
+        : `block font-medium leading-tight tracking-tight truncate  max-w-[90%] text-base-content ${isCorner ? "text-lg" : "text-sm sm:text-[0.8rem]"
+        }`;
 
       const colorStrip = cell.color ? (
         isSide ? (
@@ -190,16 +189,16 @@ export function GameBoard({
           ? "absolute -right-2 flex gap-0.5"
           : "absolute -left-2 flex gap-0.5"
         : position === "top"
-        ? "absolute -bottom-2 flex gap-0.5"
-        : "absolute -top-3 flex gap-0.5";
+          ? "absolute -bottom-2 flex gap-0.5"
+          : "absolute -top-3 flex gap-0.5";
 
       const houseClass = isSide
         ? position === "left"
           ? "absolute -right-12 flex gap-0.5 flex-col"
           : "absolute -left-12 flex gap-0.5 flex-col"
         : position === "top"
-        ? "absolute -bottom-10 flex gap-0.5 flex-col justify-start"
-        : "absolute -top-10 flex gap-0.5 flex-col-reverse justify-start";
+          ? "absolute -bottom-10 flex gap-0.5 flex-col justify-start"
+          : "absolute -top-10 flex gap-0.5 flex-col-reverse justify-start";
 
       return (
         <motion.div
@@ -213,11 +212,9 @@ export function GameBoard({
           }
         >
           <Card
-            className={`h-full w-full bg-base-300 hover:shadow-xl transition-all rounded-lg  flex ${
-              isSide ? "flex-row" : "flex-col"
-            } justify-between relative ${
-              isMortagedCell && "border border-warning scale-105"
-            }
+            className={`h-full w-full bg-base-300 hover:shadow-xl transition-all rounded-lg  flex ${isSide ? "flex-row" : "flex-col"
+              } justify-between relative ${isMortagedCell && "border border-warning scale-105"
+              }
           ${cellIsMortaged ? "opacity-65" : ""}
           `}
           >
@@ -228,9 +225,8 @@ export function GameBoard({
             <div className={contentClass}>
               {/* Иконка */}
               <div
-                className={`flex items-center justify-center ${
-                  isSide ? "ml-1" : "mb-1"
-                }`}
+                className={`flex items-center justify-center ${isSide ? "ml-1" : "mb-1"
+                  }`}
               >
                 <div className="text-base-content opacity-80">
                   {getIcon(cell.type.toUpperCase())}
@@ -248,15 +244,13 @@ export function GameBoard({
                 {/* Цена */}
                 {cell.price ? (
                   <div
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-base-content/70 text-[0.7rem] font-medium mt-1 ${
-                      isSide ? "self-center" : ""
-                    } ${
-                      cellOwner
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-base-content/70 text-[0.7rem] font-medium mt-1 ${isSide ? "self-center" : ""
+                      } ${cellOwner
                         ? isMortagedCell
                           ? "bg-stone-800"
                           : "bg-accent"
                         : "bg-base-200"
-                    } `}
+                      } `}
                   >
                     <DollarSign className="w-3 h-3 text-success shrink-0" />
                     <span className="truncate">
@@ -291,9 +285,8 @@ export function GameBoard({
                     key={player.id}
                     className={`w-6 h-6 rounded-full ${getPlayerColorClass(
                       userColor[player.position as keyof typeof userColor]
-                    )} border-2 border-white shadow-md flex items-center justify-center text-white text-xs ${
-                      player.bankrupt ? "hidden" : "animate-pulse"
-                    }`}
+                    )} border-2 border-white shadow-md flex items-center justify-center text-white text-xs ${player.bankrupt ? "hidden" : "animate-pulse"
+                      }`}
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 500 }}
@@ -325,28 +318,65 @@ export function GameBoard({
     [players, cellState, currentUser, isMortage, handleMortage]
   );
 
+
   const renderHouses = useCallback(
     (cell: CellState) => {
       if (
         cellState.find((c) => c.id === cell.id)?.ownerId !==
-          currentUser?.playerId ||
-        trainCeil.includes(cell.id)
+        currentUser?.playerId ||
+        RAILROAD_CELLS.includes(cell.id)
       )
         return null;
+
+      const originalCell = cells.find((c) => c.id === cell.id);
+      const cellColor = originalCell?.color;
+
+      const playerHasMonopoly = cellColor
+        ? (hasMonopoly(currentUser?.playerId || '', cellColor, cellState))
+        : false;
+
+      const playerCanBuildHouse = cellColor
+        ? (canBuildHouse(currentUser?.playerId || '', cell.id, cellState))
+        : false;
 
       const isBlockedBuyHouse =
         cell.houses === 4 ||
         !isCurrentTurn ||
-        cell?.housePrice! > currentUser?.money!;
+        cell?.housePrice! > currentUser?.money! ||
+        !playerHasMonopoly || !playerCanBuildHouse;
       const isBlockedBuyHotel =
         cell.hotels === 3 ||
         !isCurrentTurn ||
         cell.houses < 4 ||
-        cell?.hotelPrice! > currentUser?.money!;
+        cell?.hotelPrice! > currentUser?.money! ||
+        !playerHasMonopoly || !playerCanBuildHouse;
+
+      if (!playerHasMonopoly && cellColor) {
+        return (
+          <div className="bg-warning/20 border border-warning rounded-lg p-2">
+            <p className="text-sm text-warning font-medium">
+              ⚠️ Для строительства нужна монополия
+            </p>
+          </div>
+        );
+      }
+
+      if (!playerCanBuildHouse && cellColor) {
+        return (
+          <div className="bg-warning/20 border border-warning rounded-lg p-2">
+            <p className="text-sm text-warning font-medium">
+              ⚠️ Для строительства нужно купить равномерно дома
+            </p>
+          </div>
+        );
+      }
 
       return (
         <div className="py-2 space-y-2">
           <h3 className="text-base-content font-semibold">Дома и отели</h3>
+
+
+
           <div className="flex space-x-1 items-center">
             {[...Array(cell.houses)].map((_, index) => (
               <House key={index} className="w-8 h-8 text-emerald-500" />
@@ -380,7 +410,7 @@ export function GameBoard({
         </div>
       );
     },
-    [selectedCell, currentUser, isCurrentTurn, handleBuyHouse]
+    [cellState, currentUser, isCurrentTurn, handleBuyHouse, hasMonopoly]
   );
 
   return (
@@ -450,98 +480,98 @@ export function GameBoard({
               {(selectedCell?.type.toUpperCase() === "RAILROAD" ||
                 selectedCell?.type.toUpperCase() === "PROPERTY" ||
                 selectedCell?.type.toUpperCase() === "UTILITY") && (
-                <div className="space-y-3 pt-4">
-                  {selectedCell.color && (
-                    <div
-                      className={`h-8 ${getColorClass(
-                        selectedCell.color
-                      )} rounded-lg`}
-                    />
-                  )}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-base-content/60">Цена</p>
-                      <p className="text-base-content">${selectedCell.price}</p>
+                  <div className="space-y-3 pt-4">
+                    {selectedCell.color && (
+                      <div
+                        className={`h-8 ${getColorClass(
+                          selectedCell.color
+                        )} rounded-lg`}
+                      />
+                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-base-content/60">Цена</p>
+                        <p className="text-base-content">${selectedCell.price}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-base-content/60">Аренда</p>
+                        <p className="text-base-content">
+                          $
+                          {cellState?.find((c) => c.id === selectedCell.id)
+                            ?.currentRent || selectedCell.rent}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-base-content/60">Аренда</p>
-                      <p className="text-base-content">
-                        $
-                        {cellState?.find((c) => c.id === selectedCell.id)
-                          ?.currentRent || selectedCell.rent}
-                      </p>
-                    </div>
-                  </div>
-                  {selectedCell && (
-                    <div>
-                      <p className="text-sm text-base-content/60">Владелец</p>
+                    {selectedCell && (
+                      <div>
+                        <p className="text-sm text-base-content/60">Владелец</p>
 
-                      {(() => {
-                        const ownerCell = cellState?.find(
-                          (c) => c.id === selectedCell.id
-                        );
-                        const owner = ownerCell
-                          ? players.find(
+                        {(() => {
+                          const ownerCell = cellState?.find(
+                            (c) => c.id === selectedCell.id
+                          );
+                          const owner = ownerCell
+                            ? players.find(
                               (p) => p.playerId === ownerCell.ownerId
                             )
-                          : null;
-                        return (
-                          <Badge
-                            variant={owner ? "secondary" : "ghost"}
-                            className={`mt-1 ${getPlayerColorClass(
-                              userColor[
+                            : null;
+                          return (
+                            <Badge
+                              variant={owner ? "secondary" : "ghost"}
+                              className={`mt-1 ${getPlayerColorClass(
+                                userColor[
                                 owner?.position as keyof typeof userColor
-                              ]
-                            )}`}
-                          >
-                            {owner ? owner.player.name : "Нету"}
-                          </Badge>
-                        );
-                      })()}
-                    </div>
-                  )}
-
-                  {cellState.find((c) => c.id === selectedCell.id) &&
-                    renderHouses(
-                      cellState.find((c) => c.id === selectedCell.id)!
+                                ]
+                              )}`}
+                            >
+                              {owner ? owner.player.name : "Нету"}
+                            </Badge>
+                          );
+                        })()}
+                      </div>
                     )}
 
-                  {(() => {
-                    const cell = cellState.find(
-                      (c) => c.id === selectedCell.id
-                    );
+                    {cellState.find((c) => c.id === selectedCell.id) &&
+                      renderHouses(
+                        cellState.find((c) => c.id === selectedCell.id)!
+                      )}
 
-                    if (
-                      cell?.mortgaged &&
-                      cell.ownerId === currentUser?.playerId
-                    ) {
-                      const unmortgageCost =
-                        selectedCell.price &&
-                        Math.floor((selectedCell.price / 2) * 1.2);
-
-                      const moneyHave =
-                        !!unmortgageCost &&
-                        !!currentUser &&
-                        unmortgageCost > currentUser.money;
-                      return (
-                        <div className="w-full items-center justify-center flex">
-                          <Button
-                            disabled={
-                              !isCurrentTurn || currentUser?.jailed || moneyHave
-                            }
-                            variant="success"
-                            className="w-1/2"
-                            size="medium"
-                            onClick={() => handleUnMortage(selectedCell.id)}
-                          >
-                            Выкупить {unmortgageCost}$
-                          </Button>
-                        </div>
+                    {(() => {
+                      const cell = cellState.find(
+                        (c) => c.id === selectedCell.id
                       );
-                    }
-                  })()}
-                </div>
-              )}
+
+                      if (
+                        cell?.mortgaged &&
+                        cell.ownerId === currentUser?.playerId
+                      ) {
+                        const unmortgageCost =
+                          selectedCell.price &&
+                          Math.floor((selectedCell.price / 2) * 1.2);
+
+                        const moneyHave =
+                          !!unmortgageCost &&
+                          !!currentUser &&
+                          unmortgageCost > currentUser.money;
+                        return (
+                          <div className="w-full items-center justify-center flex">
+                            <Button
+                              disabled={
+                                !isCurrentTurn || currentUser?.jailed || moneyHave
+                              }
+                              variant="success"
+                              className="w-1/2"
+                              size="medium"
+                              onClick={() => handleUnMortage(selectedCell.id)}
+                            >
+                              Выкупить {unmortgageCost}$
+                            </Button>
+                          </div>
+                        );
+                      }
+                    })()}
+                  </div>
+                )}
               {selectedCell?.type.toUpperCase() === "CORNER" && (
                 <p className="pt-4">{selectedCell.name}</p>
               )}
