@@ -67,7 +67,7 @@ export default function AuthPage() {
       >
         <Card className="p-8 shadow-2xl border-none bg-base-100/80 backdrop-blur-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
+            <h1 className="text-3xl font-bold bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
               {mode === "login" ? "С возвращением!" : "Создать аккаунт"}
             </h1>
             <p className="text-base-content/60">
@@ -78,24 +78,28 @@ export default function AuthPage() {
           </div>
 
           <div className="flex p-1 bg-base-200 rounded-lg mb-6">
-            <button
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200 ${mode === "login"
-                ? "bg-white text-primary shadow-sm"
-                : "text-base-content/60 hover:text-base-content"
-                }`}
+            <Button
+              variant={mode === "login" ? "default" : "ghost"}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                mode === "login"
+                  ? "shadow-sm"
+                  : "text-base-content/60 hover:text-base-content"
+              }`}
               onClick={() => setMode("login")}
             >
               Вход
-            </button>
-            <button
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200 ${mode === "register"
-                ? "bg-white text-primary shadow-sm"
-                : "text-base-content/60 hover:text-base-content"
-                }`}
+            </Button>
+            <Button
+              variant={mode === "register" ? "default" : "ghost"}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                mode === "register"
+                  ? " shadow-sm"
+                  : "text-base-content/60 hover:text-base-content"
+              }`}
               onClick={() => setMode("register")}
             >
               Регистрация
-            </button>
+            </Button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -110,7 +114,7 @@ export default function AuthPage() {
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40 z-10" />
                       <Input
                         id="email"
                         type="email"
@@ -129,7 +133,7 @@ export default function AuthPage() {
             <div className="space-y-2">
               <Label htmlFor="username">Имя пользователя</Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40 z-10" />
                 <Input
                   id="username"
                   value={name}
@@ -144,7 +148,7 @@ export default function AuthPage() {
             <div className="space-y-2">
               <Label htmlFor="password">Пароль</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40 z-10" />
                 <Input
                   id="password"
                   type="password"
@@ -161,10 +165,11 @@ export default function AuthPage() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`text-sm text-center p-2 rounded-md ${message.includes("успеш") || message.includes("Success")
-                  ? "bg-success/10 text-success"
-                  : "bg-error/10 text-error"
-                  }`}
+                className={`text-sm text-center p-2 rounded-md ${
+                  message.includes("успеш") || message.includes("Success")
+                    ? "bg-success/10 text-success"
+                    : "bg-error/10 text-error"
+                }`}
               >
                 {message}
               </motion.div>

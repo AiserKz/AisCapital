@@ -5,7 +5,7 @@ export default defineConfig({
   migrations: {
     path: "prisma/migrations",
   },
-  engine: "classic",
+
   datasource: {
     url: "postgresql://aiser:QK38fONvbotz74gyBi1ahOSDdV3dcU7S@localhost:5432/monopoly_db?schema=public",
   },

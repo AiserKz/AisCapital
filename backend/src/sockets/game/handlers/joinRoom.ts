@@ -39,6 +39,7 @@ export const handleJoinRoom = async (io: Server, socket: Socket) => {
       );
       const playerInRoom = await addPlayerToRoom(roomId, playerId);
       io.to(roomId).emit(GAME_EVENTS.PLAYER_JOINED, playerInRoom);
+      await roomUpdate(io, roomId, room);
     })
   );
 };

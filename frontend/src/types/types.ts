@@ -96,6 +96,7 @@ interface RoomDetailType extends RoomType {
   winner?: PlayerLightType;
   winnerId?: string;
   comboTurn: number;
+  activeTrade: TradeOffer | null;
 }
 
 interface CellState {
@@ -159,6 +160,14 @@ interface AuctionStateType {
   playerName: string;
 }
 
+interface TradeOffer {
+  toPlayerId: string;
+  fromCells: number[];
+  fromMoney: number;
+  toCells: number[];
+  toMoney: number;
+}
+
 export type {
   AppContextType,
   UserType,
@@ -173,4 +182,5 @@ export type {
   RoomStateType,
   AuctionType,
   AuctionStateType,
+  TradeOffer,
 };

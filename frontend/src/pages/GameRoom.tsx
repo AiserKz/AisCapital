@@ -30,6 +30,8 @@ import { Loading } from "../components/Loading";
 import { ErrorScreen } from "../components/Error";
 import Button from "../components/ui/button";
 import { CurrentAuction } from "../components/gameRoom/CurrentAuction";
+import { TradeAction } from "../components/gameRoom/TradeAction";
+import { TradeViewEvent } from "../components/gameRoom/TradeViewEvent";
 
 export type RoomAction =
   | { type: "SET_ROOM"; payload: RoomDetailType }
@@ -99,7 +101,10 @@ export function GameRoom() {
   } = useGameMessage(user?.id);
 
   const [auction, setAuction] = useState<AuctionType | null>(null);
-  const [auctionState, setAuctionState] = useState<AuctionStateType | null>(null);
+  const [auctionState, setAuctionState] = useState<AuctionStateType | null>(
+    null
+  );
+  const [isTradeOpen, setIsTradeOpen] = useState<boolean>(false);
 
   const roomClosed = useCallback((message: string) => {
     toast.error(message);
@@ -125,7 +130,11 @@ export function GameRoom() {
     skipTurn,
     sendMessage,
     handleAuctionStart,
-    handleAuctionBid
+    handleAuctionBid,
+    handleTradeOffer,
+    handleTradeAccept,
+    handleTradeReject,
+    handleTradeCancel,
   } = useGameSocket(
     roomId,
     user?.id,
@@ -140,30 +149,49 @@ export function GameRoom() {
   );
 
   useEffect(() => {
+    if (!roomId) return;
+
+    let isMounted = true;
+
     const fetchRoom = async () => {
-      if (!roomId) return;
       setLoading(true);
       const savedPassword =
         sessionStorage.getItem(`room-access-${roomId}`) || "";
-      const res = await apiFetch
-        .get(`/api/rooms/${roomId}`, {
+      try {
+        const res = await apiFetch.get(`/api/rooms/${roomId}`, {
           params: { password: savedPassword },
-        })
-        .finally(() => setLoading(false));
+        });
 
-      if (res.status === 403) {
+        if (!isMounted) return;
+
+        if (res.status === 403) {
+          toast.error("Комната приватная. Введите пароль снова.");
+          navigate("/");
+          return;
+        }
+
+        if (res.status !== 200 || !res.data) {
+          toast.error("Комната не найдена");
+          navigate("/");
+          return;
+        }
+
+        dispatch({ type: "SET_ROOM", payload: res.data });
+      } catch (error) {
+        if (!isMounted) return;
+
+        toast.error("Ошибка при загрузке комнаты");
         navigate("/");
-        toast.error("Комната приватная. Введите пароль снова.");
-        return;
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      if (res.status !== 200) {
-        navigate("/");
-        toast.error("Комната не найдена");
-        return;
-      }
-      dispatch({ type: "SET_ROOM", payload: res.data.room });
     };
+
     fetchRoom();
+
+    return () => {
+      isMounted = false;
+    };
   }, [roomId]);
 
   useEffect(() => {
@@ -233,10 +261,11 @@ export function GameRoom() {
       <AnimatePresence mode="wait">
         {roomState.pendingChance && (
           <GameMessageEvent
-            title={`Шанс: ${roomState.currentRoom.players.find(
-              (p) => p.playerId === roomState.pendingChance?.playerId
-            )?.player.name
-              }`}
+            title={`Шанс: ${
+              roomState.currentRoom.players.find(
+                (p) => p.playerId === roomState.pendingChance?.playerId
+              )?.player.name
+            }`}
             description={roomState.pendingChance.text}
             isShowEvent={
               roomState.pendingChance.playerId === currentUser?.playerId
@@ -249,8 +278,6 @@ export function GameRoom() {
         {!roomState.pendingChance && message && !roomState.currentPayment && (
           <GameMessage message={message} onClose={clearMessage} />
         )}
-
-
 
         {currentRoom.winner && (
           <GameMessage>
@@ -288,6 +315,30 @@ export function GameRoom() {
           onClose={() => setAuction(null)}
         />
       )}
+
+      <TradeAction
+        isOpen={isTradeOpen}
+        onClose={() => setIsTradeOpen(false)}
+        roomState={roomState}
+        currentUser={currentUser}
+        handleTradeOffer={handleTradeOffer}
+      />
+
+      {/* Показываем входящее/активное предложение обмена, если есть */}
+      {(() => {
+        const activeTrade = roomState.currentRoom.activeTrade;
+        if (!activeTrade) return null;
+        return (
+          <TradeViewEvent
+            trade={activeTrade}
+            roomState={roomState}
+            currentUser={currentUser}
+            onAccept={() => handleTradeAccept()}
+            onReject={() => handleTradeReject()}
+            onCancel={() => handleTradeCancel()}
+          />
+        );
+      })()}
 
       {/* Главное содержимое */}
       <div className="p-6 mx-auto">
@@ -343,6 +394,7 @@ export function GameRoom() {
                 handleReady={handleIsReady}
                 timer={timer}
                 handleAuction={handleAuctionStart}
+                onOpenTrade={() => setIsTradeOpen(true)}
               />
             )}
             <GameLog logs={logs} />

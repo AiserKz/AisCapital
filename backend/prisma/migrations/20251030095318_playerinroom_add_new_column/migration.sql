@@ -1,5 +1,0 @@
--- AlterTable
-ALTER TABLE "PlayerInRoom" ADD COLUMN     "bot" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "disconnected" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "jailTurns" INTEGER NOT NULL DEFAULT 0,
-ADD COLUMN     "skippedTurns" INTEGER NOT NULL DEFAULT 0;

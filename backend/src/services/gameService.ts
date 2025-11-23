@@ -205,7 +205,7 @@ export const addPlayerToRoom = async (roomId: string, playerId: string) => {
     update: { position: newPosition, isReady: false },
     create: { roomId, playerId, position: newPosition, isReady: false },
     include: {
-      player: true, // include relation напрямую, без select
+      player: true,
     },
   });
 
@@ -314,6 +314,7 @@ export const saveRoomToDB = async (room: any) => {
       winner: room.winner,
       startedAt: room.startedAt,
       finishedAt: room.finishedAt,
+      activeTrade: room.activeTrade,
       players: {
         updateMany: room.players.map((p: any) => ({
           where: { playerId: p.playerId },

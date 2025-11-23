@@ -1,10 +1,10 @@
 generator client {
-    provider = "prisma-client-js"
+    provider        = "prisma-client-js"
+    previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
     provider = "postgresql"
-    url      = "postgresql://aiser:QK38fONvbotz74gyBi1ahOSDdV3dcU7S@localhost:5432/monopoly_db?schema=public"
 }
 
 model Player {
@@ -55,6 +55,7 @@ model GameRoom {
     cellState      Json?
     currentPayment Json?
     pendingChance  Json?
+    activeTrade    Json?
 
     createdAt         DateTime            @default(now())
     updatedAt         DateTime            @updatedAt

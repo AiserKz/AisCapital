@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Gamepad2, Plus, Trophy, Activity } from "lucide-react";
+import { Gamepad2, Plus } from "lucide-react";
 import Button from "../ui/button";
 import { PlayerState } from "../PlayerState";
 import { RoomList } from "../RoomList";
@@ -20,7 +20,7 @@ export default function Lobby() {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <div className="container mx-auto px-4 py-6 max-w-8xl">
       <CreateRoomDialog
         open={isCreateRoomModalOpen}
         onOpenChange={setIsCreateRoomModalOpen}
@@ -29,32 +29,16 @@ export default function Lobby() {
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Левая колонка: Статистика и Лидерборд */}
-        <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-6 shrink-0">
+        <div className="w-full lg:w-80 xl:w-100 flex flex-col gap-6 shrink-0">
           <motion.div
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.3 }}
             className="space-y-6"
           >
-            <div className="bg-base-100 rounded-xl shadow-sm border border-base-200 overflow-hidden">
-              <div className="p-4 border-b border-base-200 bg-base-200/50 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold text-base-content">Ваша статистика</h3>
-              </div>
-              <div className="p-4">
-                <PlayerState />
-              </div>
-            </div>
+            <PlayerState />
 
-            <div className="bg-base-100 rounded-xl shadow-sm border border-base-200 overflow-hidden">
-              <div className="p-4 border-b border-base-200 bg-base-200/50 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-warning" />
-                <h3 className="font-semibold text-base-content">Топ игроков</h3>
-              </div>
-              <div className="p-4">
-                <MiniLeaderboard onShowFull={() => navigate("/leaderboard")} />
-              </div>
-            </div>
+            <MiniLeaderboard onShowFull={() => navigate("/leaderboard")} />
           </motion.div>
         </div>
 

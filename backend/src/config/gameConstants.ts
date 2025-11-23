@@ -24,7 +24,7 @@ export const MONOPOLY_RENT_MULTIPLIER = 1.5;
 export const PENDING_ACTION_TIMEOUT = 30000;
 
 /** Время на ставку в аукционе (мс) */
-export const AUCTION_BID_TIMEOUT = 15000;
+export const AUCTION_BID_TIMEOUT = 20000;
 
 // === ТЮРЬМА ===
 /** Максимальное количество ходов в тюрьме */
@@ -55,34 +55,34 @@ export const TAX_CELLS = [4, 38];
 
 /** ID угловых клеток */
 export const CORNER_CELLS = {
-    START: 0,
-    JAIL: 10,
-    FREE_PARKING: 20,
-    GO_TO_JAIL: 30,
+  START: 0,
+  JAIL: 10,
+  FREE_PARKING: 20,
+  GO_TO_JAIL: 30,
 };
 
 // === ЦВЕТОВЫЕ ГРУППЫ ===
 /** Маппинг цветов и ID клеток для определения монополий */
 export const COLOR_GROUPS: Record<string, number[]> = {
-    brown: [1, 3],
-    lightblue: [6, 8, 9],
-    pink: [11, 13, 14],
-    orange: [16, 18, 19],
-    red: [21, 23, 24],
-    yellow: [26, 27, 29],
-    green: [31, 32, 34],
-    darkblue: [37, 39],
-    railroad: RAILROAD_CELLS,
-    utility: UTILITY_CELLS,
+  brown: [1, 3],
+  lightblue: [6, 8, 9],
+  pink: [11, 13, 14],
+  orange: [16, 18, 19],
+  red: [21, 23, 24],
+  yellow: [26, 27, 29],
+  green: [31, 32, 34],
+  darkblue: [37, 39],
+  railroad: RAILROAD_CELLS,
+  utility: UTILITY_CELLS,
 };
 
 // === МНОЖИТЕЛИ ДЛЯ ЖЕЛЕЗНЫХ ДОРОГ ===
 /** Множитель ренты в зависимости от количества железных дорог */
 export const RAILROAD_RENT_MULTIPLIERS: Record<number, number> = {
-    1: 1,
-    2: 2,
-    3: 3,
-    4: 4,
+  1: 1,
+  2: 2,
+  3: 3,
+  4: 4,
 };
 
 // === РАСЧЕТ РЕНТЫ ===

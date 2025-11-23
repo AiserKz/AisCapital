@@ -13,6 +13,7 @@ import {
   Check,
   X,
   CastleIcon,
+  ArrowLeftRight,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Button from "./ui/button";
@@ -20,6 +21,7 @@ import Card from "./ui/card";
 import { ProgressBar } from "./ui/progress";
 import type { PlayerInRoomType, RoomStateType } from "../types/types";
 import useCellActions from "../utils/hook/useCellActions";
+import { cells } from "../test/data";
 
 interface ActionPanelProps {
   roomState: RoomStateType;
@@ -36,6 +38,7 @@ interface ActionPanelProps {
   handleReady: () => void;
   handleAuction: () => void;
   timer: number;
+  onOpenTrade?: () => void;
 }
 
 export function ActionPanel({
@@ -53,6 +56,7 @@ export function ActionPanel({
   handleReady,
   handleAuction,
   timer,
+  onOpenTrade,
 }: ActionPanelProps) {
   if (!currentUser) return null;
   const [diceValue, setDiceValue] = useState<number | null>(null);
@@ -188,8 +192,9 @@ export function ActionPanel({
   );
 
   const auctionBlocked = useMemo(() => {
-    return cellState.some(
-      (cell) => cell.id === currentUser.positionOnBoard
+    return (
+      cellState?.some((cell) => cell.id === currentUser.positionOnBoard) ||
+      !cells.find((cell) => cell.id === currentUser.positionOnBoard)?.isBuying
     );
   }, [cellState, currentUser.positionOnBoard]);
 
@@ -224,15 +229,15 @@ export function ActionPanel({
               animate={
                 isRolling
                   ? {
-                    rotate: [0, 90, 180, 270, 360],
-                    scale: [1, 1, 0.9, 1],
-                    y: [0, -1, 0],
-                  }
+                      rotate: [0, 90, 180, 270, 360],
+                      scale: [1, 1, 0.9, 1],
+                      y: [0, -1, 0],
+                    }
                   : {
-                    rotate: 0,
-                    scale: 1,
-                    y: 0,
-                  }
+                      rotate: 0,
+                      scale: 1,
+                      y: 0,
+                    }
               }
               transition={{
                 duration: 0.6,
@@ -248,15 +253,15 @@ export function ActionPanel({
               animate={
                 isRolling
                   ? {
-                    rotate: [0, 90, 180, 270, 360],
-                    scale: [1, 1, 0.9, 1],
-                    y: [0, -1, 0],
-                  }
+                      rotate: [0, 90, 180, 270, 360],
+                      scale: [1, 1, 0.9, 1],
+                      y: [0, -1, 0],
+                    }
                   : {
-                    rotate: 0,
-                    scale: 1,
-                    y: 0,
-                  }
+                      rotate: 0,
+                      scale: 1,
+                      y: 0,
+                    }
               }
               transition={{
                 duration: 0.6,
@@ -273,8 +278,8 @@ export function ActionPanel({
             {isRolling
               ? "Бросаем..."
               : diceValue
-                ? `Выпало: ${diceValue}`
-                : "Бросить кубик"}
+              ? `Выпало: ${diceValue}`
+              : "Бросить кубик"}
           </span>
         </div>
 
@@ -295,8 +300,8 @@ export function ActionPanel({
               {isRolling
                 ? "Бросаем..."
                 : currentUser.jailed
-                  ? "Попробовать бросить дубль"
-                  : "Бросить кубик"}
+                ? "Попробовать бросить дубль"
+                : "Бросить кубик"}
             </Button>
           </motion.div>
 
@@ -365,22 +370,29 @@ export function ActionPanel({
                 Завершить ход
               </Button>
             )}
-
           </motion.div>
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-
-            {ownerCells.length > 0 && (
-              <Button
-                disabled={!isCurrentTurn || isBlocked || auctionBlocked}
-                variant="secondary"
-                className="w-full gap-2 justify-start"
-                onClick={handleAuction}
-              >
-                <CastleIcon className="w-4 h-4" />
-                Аукцион
-              </Button>
-            )}
+            <Button
+              disabled={!isCurrentTurn || isBlocked || auctionBlocked}
+              variant="secondary"
+              className="w-full gap-2 justify-start"
+              onClick={handleAuction}
+            >
+              <CastleIcon className="w-4 h-4" />
+              Аукцион
+            </Button>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              disabled={!isCurrentTurn || isBlocked}
+              variant="secondary"
+              className="w-full gap-2 justify-start"
+              onClick={onOpenTrade}
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+              Обмен
+            </Button>
           </motion.div>
           {gameIsReady && (
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>

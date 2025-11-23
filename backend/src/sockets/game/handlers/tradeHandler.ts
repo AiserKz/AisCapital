@@ -1,14 +1,19 @@
 import { Server, Socket } from "socket.io";
 import { safeSocket } from "../../utils/safeSocket.js";
 import { GAME_EVENTS } from "../events/gameEvents.js";
-import { getUserData, findRoomAndPlayer } from "../../utils/roomUtils.js";
 import {
-    createTradeOffer,
-    acceptTrade,
-    rejectTrade,
-    cancelTrade,
-    TradeOffer,
+  getUserData,
+  findRoomAndPlayer,
+  roomUpdate,
+} from "../../utils/roomUtils.js";
+import {
+  createTradeOffer,
+  acceptTrade,
+  rejectTrade,
+  cancelTrade,
+  TradeOffer,
 } from "../services/tradeService.js";
+import { saveRoomToDB } from "../../../services/gameService.js";
 
 /**
  * Обработчик событий обмена между игроками
@@ -16,167 +21,179 @@ import {
  * @param socket - Сокет клиента
  */
 export const handleTrade = async (io: Server, socket: Socket) => {
-    // === СОЗДАНИЕ ПРЕДЛОЖЕНИЯ ОБМЕНА ===
-    socket.on(
-        GAME_EVENTS.TRADE_OFFER,
-        safeSocket(
-            async (data: {
-                roomId: string;
-                toPlayerId: string;
-                fromCells: number[];
-                fromMoney: number;
-                toCells: number[];
-                toMoney: number;
-            }) => {
-                const { playerId, username } = getUserData(socket);
-                const { room } = await findRoomAndPlayer(data.roomId, playerId);
+  // === СОЗДАНИЕ ПРЕДЛОЖЕНИЯ ОБМЕНА ===
+  socket.on(
+    GAME_EVENTS.TRADE_OFFER,
+    safeSocket(
+      async (data: {
+        roomId: string;
+        offer: {
+          toPlayerId: string;
+          fromCells: number[];
+          fromMoney: number;
+          toCells: number[];
+          toMoney: number;
+        };
+      }) => {
+        const { playerId, username } = getUserData(socket);
+        const { room } = await findRoomAndPlayer(data.roomId, playerId);
 
-                console.log(`🤝 ${username} предлагает обмен игроку ${data.toPlayerId}`);
+        console.log(
+          `🤝 ${username} предлагает обмен игроку `,
+          data.offer.toPlayerId
+        );
 
-                const tradeOffer = createTradeOffer(room, playerId, data.toPlayerId, {
-                    fromCells: data.fromCells,
-                    fromMoney: data.fromMoney,
-                    toCells: data.toCells,
-                    toMoney: data.toMoney,
-                });
+        const tradeOffer = createTradeOffer(
+          room,
+          playerId,
+          data.offer.toPlayerId,
+          {
+            fromCells: data.offer.fromCells,
+            fromMoney: data.offer.fromMoney,
+            toCells: data.offer.toCells,
+            toMoney: data.offer.toMoney,
+          }
+        );
 
-                if (!tradeOffer) {
-                    socket.emit(GAME_EVENTS.MESSAGE, {
-                        playerId,
-                        text: "⭕ Не удалось создать предложение обмена",
-                        type: "EVENT",
-                    });
-                    return;
-                }
+        if (!tradeOffer) {
+          socket.emit(GAME_EVENTS.MESSAGE, {
+            playerId,
+            text: "⭕ Не удалось создать предложение обмена",
+            type: "EVENT",
+          });
+          return;
+        }
 
-                // Устанавливаем активный обмен в комнате
-                // if (!room.activeTrade) {
-                //     (room as any).activeTrade = tradeOffer;
-                // }
+        // Устанавливаем активный обмен в комнате
+        if (!room.activeTrade) {
+          (room as any).activeTrade = tradeOffer;
+        }
 
-                // Отправляем предложение получателю
-                io.to(data.roomId).emit(GAME_EVENTS.TRADE_UPDATED, tradeOffer);
+        saveRoomToDB(room);
+        await roomUpdate(io, data.roomId, room);
 
-                socket.emit(GAME_EVENTS.MESSAGE, {
-                    playerId,
-                    text: `✅ Предложение обмена отправлено`,
-                    type: "EVENT",
-                });
-            }
-        )
-    );
+        socket.emit(GAME_EVENTS.MESSAGE, {
+          playerId,
+          text: `✅ Предложение обмена отправлено`,
+          type: "EVENT",
+        });
+      }
+    )
+  );
 
-    // === ПРИНЯТИЕ ОБМЕНА ===
-    socket.on(
-        GAME_EVENTS.TRADE_ACCEPT,
-        safeSocket(async (data: { roomId: string; tradeId: string }) => {
-            const { playerId, username } = getUserData(socket);
-            const { room } = await findRoomAndPlayer(data.roomId, playerId);
+  // === ПРИНЯТИЕ ОБМЕНА ===
+  socket.on(
+    GAME_EVENTS.TRADE_ACCEPT,
+    safeSocket(async (data: { roomId: string }) => {
+      const { playerId, username } = getUserData(socket);
+      const { room } = await findRoomAndPlayer(data.roomId, playerId);
 
-            const activeTrade = (room as any).activeTrade as TradeOffer | undefined;
+      const activeTrade = room.activeTrade as unknown as TradeOffer | undefined;
+      console.log(activeTrade);
+      if (!activeTrade) {
+        socket.emit(GAME_EVENTS.MESSAGE, {
+          playerId,
+          text: "⭕ Обмен не найден",
+          type: "EVENT",
+        });
+        return;
+      }
 
-            if (!activeTrade || activeTrade.id !== data.tradeId) {
-                socket.emit(GAME_EVENTS.MESSAGE, {
-                    playerId,
-                    text: "⭕ Обмен не найден",
-                    type: "EVENT",
-                });
-                return;
-            }
+      if (activeTrade.toPlayerId !== playerId) {
+        socket.emit(GAME_EVENTS.MESSAGE, {
+          playerId,
+          text: "⭕ Этот обмен не для вас",
+          type: "EVENT",
+        });
+        return;
+      }
 
-            if (activeTrade.toPlayerId !== playerId) {
-                socket.emit(GAME_EVENTS.MESSAGE, {
-                    playerId,
-                    text: "⭕ Этот обмен не для вас",
-                    type: "EVENT",
-                });
-                return;
-            }
+      console.log(`✅ ${username} принял предложение обмена`);
 
-            console.log(`✅ ${username} принял предложение обмена`);
+      await acceptTrade(io, room, activeTrade);
 
-            await acceptTrade(io, room, activeTrade);
+      // Очищаем активный обмен
+      room.activeTrade = null;
+      await saveRoomToDB(room);
+      await roomUpdate(io, data.roomId, room);
+    })
+  );
 
-            // Очищаем активный обмен
-            (room as any).activeTrade = null;
+  // === ОТКЛОНЕНИЕ ОБМЕНА ===
+  socket.on(
+    GAME_EVENTS.TRADE_REJECT,
+    safeSocket(async (data: { roomId: string }) => {
+      const { playerId, username } = getUserData(socket);
+      const { room } = await findRoomAndPlayer(data.roomId, playerId);
 
-            io.to(data.roomId).emit(GAME_EVENTS.TRADE_UPDATED, null);
-        })
-    );
+      const activeTrade = room.activeTrade as unknown as TradeOffer | undefined;
 
-    // === ОТКЛОНЕНИЕ ОБМЕНА ===
-    socket.on(
-        GAME_EVENTS.TRADE_REJECT,
-        safeSocket(async (data: { roomId: string; tradeId: string }) => {
-            const { playerId, username } = getUserData(socket);
-            const { room } = await findRoomAndPlayer(data.roomId, playerId);
+      if (!activeTrade) {
+        socket.emit(GAME_EVENTS.MESSAGE, {
+          playerId,
+          text: "⭕ Обмен не найден",
+          type: "EVENT",
+        });
+        return;
+      }
 
-            const activeTrade = (room as any).activeTrade as TradeOffer | undefined;
+      if (activeTrade.toPlayerId !== playerId) {
+        socket.emit(GAME_EVENTS.MESSAGE, {
+          playerId,
+          text: "⭕ Этот обмен не для вас",
+          type: "EVENT",
+        });
+        return;
+      }
 
-            if (!activeTrade || activeTrade.id !== data.tradeId) {
-                socket.emit(GAME_EVENTS.MESSAGE, {
-                    playerId,
-                    text: "⭕ Обмен не найден",
-                    type: "EVENT",
-                });
-                return;
-            }
+      console.log(`❌ ${username} отклонил предложение обмена`);
 
-            if (activeTrade.toPlayerId !== playerId) {
-                socket.emit(GAME_EVENTS.MESSAGE, {
-                    playerId,
-                    text: "⭕ Этот обмен не для вас",
-                    type: "EVENT",
-                });
-                return;
-            }
+      await rejectTrade(io, room, activeTrade);
 
-            console.log(`❌ ${username} отклонил предложение обмена`);
+      // Очищаем активный обмен
+      room.activeTrade = null;
+      await saveRoomToDB(room);
+      await roomUpdate(io, data.roomId, room);
+    })
+  );
 
-            await rejectTrade(io, room, activeTrade);
+  // === ОТМЕНА ОБМЕНА (ИНИЦИАТОРОМ) ===
+  socket.on(
+    GAME_EVENTS.TRADE_CANCEL,
+    safeSocket(async (data: { roomId: string }) => {
+      const { playerId, username } = getUserData(socket);
+      const { room } = await findRoomAndPlayer(data.roomId, playerId);
 
-            // Очищаем активный обмен
-            (room as any).activeTrade = null;
+      const activeTrade = room.activeTrade as unknown as TradeOffer | undefined;
 
-            io.to(data.roomId).emit(GAME_EVENTS.TRADE_UPDATED, null);
-        })
-    );
+      if (!activeTrade) {
+        socket.emit(GAME_EVENTS.MESSAGE, {
+          playerId,
+          text: "⭕ Обмен не найден",
+          type: "EVENT",
+        });
+        return;
+      }
 
-    // === ОТМЕНА ОБМЕНА (ИНИЦИАТОРОМ) ===
-    socket.on(
-        GAME_EVENTS.TRADE_CANCEL,
-        safeSocket(async (data: { roomId: string; tradeId: string }) => {
-            const { playerId, username } = getUserData(socket);
-            const { room } = await findRoomAndPlayer(data.roomId, playerId);
+      if (activeTrade.fromPlayerId !== playerId) {
+        socket.emit(GAME_EVENTS.MESSAGE, {
+          playerId,
+          text: "⭕ Вы не можете отменить чужой обмен",
+          type: "EVENT",
+        });
+        return;
+      }
 
-            const activeTrade = (room as any).activeTrade as TradeOffer | undefined;
+      console.log(`🚫 ${username} отменил предложение обмена`);
 
-            if (!activeTrade || activeTrade.id !== data.tradeId) {
-                socket.emit(GAME_EVENTS.MESSAGE, {
-                    playerId,
-                    text: "⭕ Обмен не найден",
-                    type: "EVENT",
-                });
-                return;
-            }
+      await cancelTrade(io, room, activeTrade);
 
-            if (activeTrade.fromPlayerId !== playerId) {
-                socket.emit(GAME_EVENTS.MESSAGE, {
-                    playerId,
-                    text: "⭕ Вы не можете отменить чужой обмен",
-                    type: "EVENT",
-                });
-                return;
-            }
+      // Очищаем активный обмен
+      room.activeTrade = null;
+      await saveRoomToDB(room);
+      await roomUpdate(io, data.roomId, room);
 
-            console.log(`🚫 ${username} отменил предложение обмена`);
-
-            await cancelTrade(io, room, activeTrade);
-
-            // Очищаем активный обмен
-            (room as any).activeTrade = null;
-
-            io.to(data.roomId).emit(GAME_EVENTS.TRADE_UPDATED, null);
-        })
-    );
+      io.to(data.roomId).emit(GAME_EVENTS.TRADE_UPDATED, null);
+    })
+  );
 };

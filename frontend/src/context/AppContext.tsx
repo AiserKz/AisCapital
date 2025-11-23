@@ -41,7 +41,7 @@ export default function AppProvider({
     setleader(leader);
 
     const roomsResponse = await server.getRooms();
-    // если API возвращает объект { rooms: [...] }
+    // API возвращает объект { rooms: [...] }
     const rooms = Array.isArray(roomsResponse)
       ? roomsResponse
       : roomsResponse.rooms || [];
