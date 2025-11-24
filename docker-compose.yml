@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: aiser
+      POSTGRES_PASSWORD: QK38fONvbotz74gyBi1ahOSDdV3dcU7S
+      POSTGRES_DB: monopoly_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    restart: always
+    environment:
+      ACCESS_SECRET_KEY: v3W7MYVJhTV8KE6ZPZ-CkpaieHyY2xQn2ABhDuGZN2G6MTmRaiafqFDR_Lbw
+      REFRESH_SECRET_KEY: CkpaieHyY2xQn2ABhDuGZN2G6MTmRaiafqFDR_LbwVJhTV8K
+
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: aiser
+      DB_PASSWORD: QK38fONvbotz74gyBi1ahOSDdV3dcU7S
+      DB_NAME: monopoly_db
+      DB_SCHEMA: public
+
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata:

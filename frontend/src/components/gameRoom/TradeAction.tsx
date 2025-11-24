@@ -35,16 +35,16 @@ export function TradeAction({
   const myProperties = useMemo(() => {
     if (!currentUser) return [] as number[];
     return roomState.cellState
-      .filter((c) => c.ownerId === currentUser.playerId)
+      ?.filter((c) => c.ownerId === currentUser?.playerId)
       .map((c) => c.id);
-  }, [roomState.cellState, currentUser]);
+  }, [roomState?.cellState, currentUser]);
 
   const targetProperties = useMemo(() => {
     if (!toPlayerId) return [] as number[];
     return roomState.cellState
-      .filter((c) => c.ownerId === toPlayerId)
+      ?.filter((c) => c.ownerId === toPlayerId)
       .map((c) => c.id);
-  }, [roomState.cellState, toPlayerId]);
+  }, [roomState?.cellState, toPlayerId]);
 
   const toggleSelection = (
     id: number,
@@ -77,24 +77,33 @@ export function TradeAction({
     };
 
     handleTradeOffer(offer);
+    clearState();
     onClose();
   };
 
   if (!isOpen) return null;
 
-  //   const getColorClass = (color?: string) => {
-  //     const colors: Record<string, string> = {
-  //       brown: "bg-amber-800",
-  //       lightblue: "bg-sky-400",
-  //       pink: "bg-pink-400",
-  //       orange: "bg-orange-500",
-  //       red: "bg-red-500",
-  //       yellow: "bg-yellow-400",
-  //       green: "bg-green-500",
-  //       darkblue: "bg-blue-700",
-  //     };
-  //     return color ? colors[color] || "bg-slate-300" : "bg-slate-300";
-  //   };
+  const clearState = () => {
+    setToPlayerId("");
+    setFromCells([]);
+    setToCells([]);
+    setFromMoney(0);
+    setToMoney(0);
+  };
+
+  const getColorClass = (color?: string) => {
+    const colors: Record<string, string> = {
+      brown: "bg-amber-800",
+      lightblue: "bg-sky-400",
+      pink: "bg-pink-400",
+      orange: "bg-orange-500",
+      red: "bg-red-500",
+      yellow: "bg-yellow-400",
+      green: "bg-green-500",
+      darkblue: "bg-blue-700",
+    };
+    return color ? colors[color] || "bg-slate-300" : "bg-slate-300";
+  };
 
   return (
     <motion.div
@@ -142,7 +151,7 @@ export function TradeAction({
                   <p className="text-sm text-base-content/60 mb-1">
                     Вы предлагаете
                   </p>
-                  <div className="space-y-2 max-h-40 overflow-auto">
+                  <div className="space-y-2 max-h-60 overflow-auto">
                     {myProperties.length === 0 && (
                       <p className="text-sm text-base-content/70">
                         Нет ваших свойств
@@ -150,8 +159,16 @@ export function TradeAction({
                     )}
                     {myProperties.map((id) => {
                       const info = getCellInfo(id);
+                      const color =
+                        getColorClass(info?.color) || "bg-slate-300";
                       return (
-                        <label key={id} className="flex items-center gap-2">
+                        <label
+                          key={id}
+                          className="flex items-center gap-2 cursor-pointer "
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-sm ${color} border border-black/5`}
+                          />
                           <input
                             type="checkbox"
                             checked={fromCells.includes(id)}
@@ -159,7 +176,9 @@ export function TradeAction({
                               toggleSelection(id, fromCells, setFromCells)
                             }
                           />
-                          <span>{info?.name || `#${id}`}</span>
+                          <span>
+                            {info?.name} {`#${id}`}
+                          </span>
                         </label>
                       );
                     })}
@@ -180,7 +199,7 @@ export function TradeAction({
 
               <div className="md:col-span-1">
                 <p className="text-sm text-base-content/60 mb-2">Просите</p>
-                <div className="space-y-2 max-h-40 overflow-auto">
+                <div className="space-y-2 max-h-60 overflow-auto">
                   {toPlayerId === "" && (
                     <p className="text-sm text-base-content/70">
                       Выберите игрока, чтобы посмотреть его свойства
@@ -188,8 +207,15 @@ export function TradeAction({
                   )}
                   {targetProperties.map((id) => {
                     const info = getCellInfo(id);
+                    const color = getColorClass(info?.color) || "bg-slate-300";
                     return (
-                      <label key={id} className="flex items-center gap-2">
+                      <label
+                        key={id}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <div
+                          className={`w-4 h-4 rounded-sm ${color} border border-black/5`}
+                        />
                         <input
                           type="checkbox"
                           checked={toCells.includes(id)}

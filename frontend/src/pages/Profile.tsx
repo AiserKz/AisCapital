@@ -6,14 +6,11 @@ import AvatarCircle from "../components/ui/avatarCircle";
 import {
   Trophy,
   Medal,
-  Award,
   Crown,
   Star,
   Calendar,
   Gamepad2,
   Target,
-  Clock,
-  CheckIcon,
 } from "lucide-react";
 import { ProgressBar } from "../components/ui/progress";
 import { useApp } from "../context/AppContext";

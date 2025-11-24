@@ -72,7 +72,7 @@ export function CreateRoomDialog({
               value={maxPlayers}
               onChange={(e) => setMaxPlayers(Number(e.target.value) || 4)}
             >
-              {[1, 2, 3, 4, 5, 6].map((player) => (
+              {[2, 3, 4, 5, 6].map((player) => (
                 <option key={player} value={player}>
                   {player} игрока
                 </option>

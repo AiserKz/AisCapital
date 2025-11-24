@@ -93,16 +93,17 @@ export function RoomList() {
           className="group"
         >
           <Card
-            className={`transition-all duration-200 border-l-4 ${room.host.id === user?.id
-              ? "border-l-primary border-y-base-200 border-r-base-200"
-              : "border-l-transparent border-base-200"
-              } hover:shadow-md hover:border-l-primary/50 bg-base-100`}
+            className={`transition-all duration-200 border-l-4 ${
+              room.host.id === user?.id
+                ? "border-l-primary border-y-base-200 border-r-base-200"
+                : "border-l-transparent border-base-200"
+            } hover:shadow-md hover:border-l-primary/50 bg-base-100`}
           >
             <div className="p-4 sm:p-5">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 {/* Иконка комнаты */}
                 <div className="relative shrink-0">
-                  <div className="w-14 h-14 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                  <div className="w-14 h-14 bg-linear-to-br from-primary/10 to-secondary/10 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
                     <Users className="w-7 h-7 text-primary" />
                   </div>
                   {room.isPrivate && (
@@ -132,7 +133,9 @@ export function RoomList() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-base-content/40">Хост:</span>
-                      <span className="font-medium text-base-content/80">{room.host.name}</span>
+                      <span className="font-medium text-base-content/80">
+                        {room.host.name}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5" />
@@ -197,7 +200,9 @@ export function RoomList() {
                 autoFocus
               />
               {error && (
-                <p className="text-error text-sm font-medium text-center animate-pulse">{error}</p>
+                <p className="text-error text-sm font-medium text-center animate-pulse">
+                  {error}
+                </p>
               )}
             </div>
 
@@ -230,7 +235,9 @@ export function RoomList() {
           <div className="w-16 h-16 bg-base-200 rounded-full flex items-center justify-center mx-auto mb-4">
             <Users className="w-8 h-8 text-base-content/40" />
           </div>
-          <h3 className="text-lg font-semibold text-base-content mb-1">Нет активных комнат</h3>
+          <h3 className="text-lg font-semibold text-base-content mb-1">
+            Нет активных комнат
+          </h3>
           <p className="text-base-content/60 max-w-xs mx-auto">
             Создайте новую комнату, чтобы начать игру и пригласить друзей
           </p>

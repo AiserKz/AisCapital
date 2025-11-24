@@ -22,7 +22,7 @@ app.use(
       "http://localhost:3000",
       "http://localhost:5173",
       "http://localhost:5174",
-      "https://dkkt7tlx-5173.euw.devtunnels.ms",
+      "http://localhost:4173",
     ],
     credentials: true,
   })

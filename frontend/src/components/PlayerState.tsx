@@ -2,7 +2,6 @@ import { Gamepad2, Target, TrendingUp, Trophy, User } from "lucide-react";
 import Card, { CardSecondary } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { ProgressBar } from "./ui/progress";
-import { motion } from "framer-motion";
 import AvatarCircle from "./ui/avatarCircle";
 import { useApp } from "../context/AppContext";
 

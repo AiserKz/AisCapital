@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
 import Card from "../components/ui/card";
 import Input from "../components/ui/input";
 import Button from "../components/ui/button";
@@ -8,20 +7,24 @@ import Label from "../components/ui/label";
 import axios from "axios";
 import { API_BASE_URL } from "../config";
 import { User, Lock, Mail, LogIn, UserPlus } from "lucide-react";
+import { useApp } from "../context/AppContext";
 
 export default function AuthPage() {
+  const { fetchData } = useApp();
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState<string>("ais@gmail.com");
-  const [name, setUsername] = useState<string>("Aiser");
-  const [password, setPassword] = useState<string>("2002");
+  const [email, setEmail] = useState<string>("");
+  const [name, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [status, setStatus] = useState<{
+    status: number;
+    message: string;
+  } | null>();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage(null);
+    setStatus(null);
 
     const endpoint =
       API_BASE_URL +
@@ -42,19 +45,24 @@ export default function AuthPage() {
 
       if (!res.status || res.status >= 400) {
         console.log(res);
-        setMessage(res.data.message || "Ошибка сервера");
+        fetchStatus(res.data);
       } else {
-        console.log(res);
         localStorage.setItem("accessToken", res.data.accessToken);
-        setMessage(res.data.message);
-
-        setTimeout(() => navigate("/"), 600);
+        fetchStatus({ status: 200, message: "Успешно" });
+        fetchData();
       }
     } catch (err: any) {
-      setMessage(err?.response?.data?.message || "Сетевая ошибка");
+      fetchStatus(err.response.data);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchStatus = (data: { status: number; message: string }) => {
+    setStatus({
+      status: data?.status ?? 500,
+      message: data?.message ?? "Произошла ошибка",
+    });
   };
 
   return (
@@ -138,7 +146,7 @@ export default function AuthPage() {
                   id="username"
                   value={name}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Username"
+                  placeholder="Логин"
                   className="pl-10"
                   required
                 />
@@ -161,17 +169,17 @@ export default function AuthPage() {
               </div>
             </div>
 
-            {message && (
+            {status && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`text-sm text-center p-2 rounded-md ${
-                  message.includes("успеш") || message.includes("Success")
+                  status.status === 200
                     ? "bg-success/10 text-success"
                     : "bg-error/10 text-error"
                 }`}
               >
-                {message}
+                {status.message}
               </motion.div>
             )}
 

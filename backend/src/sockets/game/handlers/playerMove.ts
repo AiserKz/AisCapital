@@ -92,6 +92,11 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
         return;
       }
 
+      if (room.activeTrade) {
+        console.log(`🎲 Игрок ${username} ожидает обмен!`);
+        return;
+      }
+
       console.log(
         `🎲 Игрок ${username} бросил кубики: ${dice1} + ${dice2} = ${totalMove}`
       );
@@ -125,7 +130,9 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
       // Если игрок прошел через клетку «Старт» (id=0), начисляем бонус
       if (player.positionOnBoard + totalMove >= TOTAL_CELLS) {
         player.money += START_BONUS;
-        console.log(`💰 Игрок ${username} прошёл через старт и получил $${START_BONUS}`);
+        console.log(
+          `💰 Игрок ${username} прошёл через старт и получил $${START_BONUS}`
+        );
         sendRoomMessage(
           io,
           roomId,
@@ -165,7 +172,8 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
         // === КЛЕТКА НАЛОГА ===
         case "TAX":
           // Налог = базовая сумма + процент от денег игрока
-          const taxAmount = Math.floor(player.money * TAX_PERCENTAGE) + TAX_BASE;
+          const taxAmount =
+            Math.floor(player.money * TAX_PERCENTAGE) + TAX_BASE;
           player.money -= taxAmount;
           console.log(`💸 Игрок ${username} заплатил налог $${taxAmount}`);
           sendRoomMessage(
@@ -243,7 +251,9 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           delete timers[timerKey];
         }
 
-        console.log("Игрок попал на клетку, запускаю таймер на принятие решения");
+        console.log(
+          "Игрок попал на клетку, запускаю таймер на принятие решения"
+        );
         player.pendingAction = {
           type: "BUY_OR_PAY",
           cellId: currentCell.id,
@@ -259,7 +269,9 @@ export const handlePlayerMove = async (io: Server, socket: Socket) => {
           // Получаем актуальные данные игрока из комнаты на момент срабатывания таймера
           const { room, player } = await findRoomAndPlayer(roomId, playerId);
           if (isBuyOrPayAction(player.pendingAction)) {
-            console.log(`💸 У игрока ${username} закончилось время на принятие решения`);
+            console.log(
+              `💸 У игрока ${username} закончилось время на принятие решения`
+            );
             player.pendingAction = null;
 
             // Передаем ход следующему игроку (если не был дубль)

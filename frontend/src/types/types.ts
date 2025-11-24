@@ -5,6 +5,7 @@ interface AppContextType {
   roomList: RoomType[];
   fetchRoomList: () => void;
   LogOut: () => void;
+  fetchData: () => void;
 }
 
 interface UserType {

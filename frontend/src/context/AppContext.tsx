@@ -66,6 +66,7 @@ export default function AppProvider({
     LogOut,
     roomList,
     fetchRoomList,
+    fetchData,
   } as AppContextType;
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
